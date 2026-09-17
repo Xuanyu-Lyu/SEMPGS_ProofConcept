@@ -216,3 +216,40 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# R data and session files
+.Rproj.user/
+.Rhistory
+.Rapp.history
+.RData
+.Ruserdata
+*.Rdata
+*.rda
+*.rds
+*.RDS
+*.Rds
+.httr-oauth
+*.utf8.md
+*.knit.md
+rsconnect/
+packrat/lib*/
+packrat/src/
+renv/library/
+renv/local/
+renv/cellar/
+renv/lock/
+renv/python/
+renv/sandbox/
+renv/staging/
+
+# Intermediate storage / data files
+test_data/
+test_results/
+*.tsv
+*.csv
+*.log
+*.dat
+*.out
+
+# macOS
+.DS_Store
