@@ -245,6 +245,9 @@ renv/staging/
 # Intermediate storage / data files
 test_data/
 test_results/
+SensitivityAnalyses/*/output/data/
+SensitivityAnalyses/*/output/truth/
+SensitivityAnalyses/*/output/results/fits/
 *.tsv
 *.csv
 *.log
