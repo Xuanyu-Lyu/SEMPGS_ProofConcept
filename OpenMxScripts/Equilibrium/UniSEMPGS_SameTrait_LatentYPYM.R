@@ -61,21 +61,15 @@ fitUniSEMPGS_SameTrait_LatentParents <- function(data_path, h2_RDR, feaTol = 1e-
     hc_Algebra <- mxAlgebra(ht, name="hc_Algebra") 
     gchc_constraint_Algebra <- mxAlgebra(hc * ( (2 * delta^2 * k) / (2 * a^2 * j) ), name = "gchc_constraint_Algebra") 
 
-    itlo  <- mxMatrix(type="Full", nrow=1, ncol=1, free=T, values=.02, label="itlo11", name="itlo") 
-    itol  <- mxMatrix(type="Full", nrow=1, ncol=1, free=T, values=.02, label="itol11", name="itol")
     ic    <- mxMatrix(type="Full", nrow=1, ncol=1, free=T, values=.02, label="ic11",   name="ic") 
     
-    itlo_Algebra <- mxAlgebra(Gamma * mu * Omega, name="itlo_Algebra") 
-    itol_Algebra <- mxAlgebra(Omega * mu * Gamma, name="itol_Algebra") 
-    ic_Algebra   <- mxAlgebra(.5 * (itlo + itol), name="ic_Algebra") 
+    ic_Algebra   <- mxAlgebra(Omega * mu * Gamma, name="ic_Algebra") 
     
     gt_constraint   <- mxConstraint(gt == gt_Algebra, name='gt_constraint')
     ht_constraint   <- mxConstraint(ht == ht_Algebra, name='ht_constraint')
     gc_constraint   <- mxConstraint(gc == gc_Algebra, name='gc_constraint')
     hc_constraint   <- mxConstraint(hc == hc_Algebra, name='hc_constraint')
     gchc_constraint <- mxConstraint(gc == gchc_constraint_Algebra, name='gchc_constraint')
-    itlo_constraint <- mxConstraint(itlo == itlo_Algebra, name='itlo_constraint')
-    itol_constraint <- mxConstraint(itol == itol_Algebra, name='itol_constraint')
     ic_constraint   <- mxConstraint(ic == ic_Algebra, name='ic_constraint')
 
     # Vertical transmission effects
@@ -116,12 +110,12 @@ fitUniSEMPGS_SameTrait_LatentParents <- function(data_path, h2_RDR, feaTol = 1e-
     FitFunctionML     <- mxFitFunctionML()
 
     Params <- list(
-                VY, VE, delta, a, k, j, Omega, Gamma, mu, gt, ht, gc, hc, itlo, itol, ic, f, w, v,
+                VY, VE, delta, a, k, j, Omega, Gamma, mu, gt, ht, gc, hc, ic, f, w, v,
                 VY_Algebra, VF_Algebra, Omega_Algebra, Gamma_Algebra, j_Algebra, gt_Algebra, 
-                ht_Algebra, gc_Algebra, hc_Algebra, gchc_constraint_Algebra, itlo_Algebra, 
-                itol_Algebra, ic_Algebra, w_Algebra, v_Algebra, wv_constraint_algebra,
+                ht_Algebra, gc_Algebra, hc_Algebra, gchc_constraint_Algebra, 
+                ic_Algebra, w_Algebra, v_Algebra, wv_constraint_algebra,
                 VY_Constraint, Omega_Constraint, Gamma_Constraint, j_constraint, gt_constraint, ht_constraint,
-                gc_constraint, hc_constraint, itlo_constraint, itol_constraint, ic_constraint, v_constraint, w_constraint,
+                gc_constraint, hc_constraint, ic_constraint, v_constraint, w_constraint,
                 h2mat, rdr_left, rdr_right, rdrCon, # Identification for 'a'
                 thetaNT, thetaT, 
                 CovMatrix, Means, ModelExpectations, FitFunctionML)
