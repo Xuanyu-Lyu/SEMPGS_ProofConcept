@@ -29,6 +29,17 @@ fitUniSEMPGS_SameTrait_ObservedYPYM <- function(data_path, feaTol = 1e-6, optTol
     a     <- mxMatrix(type="Full", nrow=1, ncol=1, free=T, values=.8, label="a11", name="a", lbound = .001)     
     k     <- mxMatrix(type="Full", nrow=1, ncol=1, free=F, values=.5, label="k11", name="k")     
     j     <- mxMatrix(type="Full", nrow=1, ncol=1, free=F, values=.5, label="j11", name="j")     
+    # k and j are fixed at .5, which assumes the PGS (and, by convention, the latent LGS) is standardised
+    # in the base population. Empirical PGS are usually scaled in the analysed sample, i.e. at equilibrium,
+    # where the haplotypic PGS variance is k + g and the full PGS variance is 2k + 4g (g = gc = gt, h = hc = ht).
+    # To use one of those scalings, replace the two fixed matrices above with the matching algebra pair
+    # (and drop j_Algebra / j_constraint below, which would otherwise force gc == hc):
+    #   haplotypic PGS scaled to variance 1/2 at equilibrium:  k = 1/2 - g,   j = 1/2 - h
+    # k <- mxAlgebra(.5 - gc, name = "k")
+    # j <- mxAlgebra(.5 - hc, name = "j")
+    #   full PGS standardised to variance 1 at equilibrium:    k = 1/2 - 2g,  j = 1/2 - 2h
+    # k <- mxAlgebra(.5 - 2 * gc, name = "k")
+    # j <- mxAlgebra(.5 - 2 * hc, name = "j")
     Omega <- mxMatrix(type="Full", nrow=1, ncol=1, free=T, values=.6, label="Omega11", name="Omega") 
     Gamma <- mxMatrix(type="Full", nrow=1, ncol=1, free=T, values=.5, label="Gamma11", name="Gamma") 
 
@@ -55,7 +66,6 @@ fitUniSEMPGS_SameTrait_ObservedYPYM <- function(data_path, feaTol = 1e-6, optTol
     ht_Algebra <- mxAlgebra(Gamma * mu * Gamma, name="ht_Algebra") 
     gc_Algebra <- mxAlgebra(gt, name="gc_Algebra") # Simplified for scalar
     hc_Algebra <- mxAlgebra(ht, name="hc_Algebra") 
-    gchc_constraint_Algebra <- mxAlgebra(hc * ( (2 * delta^2 * k) / (2 * a^2 * j) ), name = "gchc_constraint_Algebra") 
 
     ic    <- mxMatrix(type="Full", nrow=1, ncol=1, free=T, values=.07, label="ic11",   name="ic") 
     
@@ -65,7 +75,6 @@ fitUniSEMPGS_SameTrait_ObservedYPYM <- function(data_path, feaTol = 1e-6, optTol
     ht_constraint   <- mxConstraint(ht == ht_Algebra, name='ht_constraint')
     gc_constraint   <- mxConstraint(gc == gc_Algebra, name='gc_constraint')
     hc_constraint   <- mxConstraint(hc == hc_Algebra, name='hc_constraint')
-    gchc_constraint <- mxConstraint(gc == gchc_constraint_Algebra, name='gchc_constraint')
     ic_constraint   <- mxConstraint(ic == ic_Algebra, name='ic_constraint')
 
     # Vertical transmission effects
@@ -113,7 +122,7 @@ fitUniSEMPGS_SameTrait_ObservedYPYM <- function(data_path, feaTol = 1e-6, optTol
 
     Params <- list(
                 VY, VE, delta, a, k, j, Omega, Gamma, mu, gt, ht, gc, hc, ic, f, w, v,
-                VY_Algebra, VF_Algebra, Omega_Algebra, Gamma_Algebra, adelta_Constraint_Algebra, j_Algebra, gt_Algebra, ht_Algebra, gc_Algebra, hc_Algebra, gchc_constraint_Algebra, ic_Algebra, w_Algebra, v_Algebra, wv_constraint_algebra,
+                VY_Algebra, VF_Algebra, Omega_Algebra, Gamma_Algebra, adelta_Constraint_Algebra, j_Algebra, gt_Algebra, ht_Algebra, gc_Algebra, hc_Algebra, ic_Algebra, w_Algebra, v_Algebra, wv_constraint_algebra,
                 VY_Constraint, Gamma_Constraint, j_constraint, ht_constraint, hc_constraint, ic_constraint, v_constraint, w_constraint,
                 thetaNT, thetaT, Yp_PGSm, Ym_PGSp, Yp_Ym, Ym_Yp, Yo_Yp, Yo_Ym, 
                 CovMatrix, Means, ModelExpectations, FitFunctionML)

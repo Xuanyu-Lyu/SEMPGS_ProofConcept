@@ -64,7 +64,6 @@ fitUniSEMPGS_Binary_SameTrait_LatentParents <- function(data_path, h2_RDR, feaTo
     ht_Algebra <- mxAlgebra(Gamma * mu * Gamma, name="ht_Algebra")
     gc_Algebra <- mxAlgebra(gt, name="gc_Algebra")
     hc_Algebra <- mxAlgebra(ht, name="hc_Algebra")
-    gchc_constraint_Algebra <- mxAlgebra(hc * ( (2 * delta^2 * k) / (2 * a^2 * j) ), name = "gchc_constraint_Algebra")
 
     ic    <- mxMatrix(type="Full", nrow=1, ncol=1, free=T, values=.02, label="ic11",   name="ic")
 
@@ -74,7 +73,6 @@ fitUniSEMPGS_Binary_SameTrait_LatentParents <- function(data_path, h2_RDR, feaTo
     ht_constraint   <- mxConstraint(ht == ht_Algebra, name='ht_constraint')
     gc_constraint   <- mxConstraint(gc == gc_Algebra, name='gc_constraint')
     hc_constraint   <- mxConstraint(hc == hc_Algebra, name='hc_constraint')
-    gchc_constraint <- mxConstraint(gc == gchc_constraint_Algebra, name='gchc_constraint')
     ic_constraint   <- mxConstraint(ic == ic_Algebra, name='ic_constraint')
 
     # Vertical transmission effects
@@ -123,7 +121,7 @@ fitUniSEMPGS_Binary_SameTrait_LatentParents <- function(data_path, h2_RDR, feaTo
     Params <- list(
                 VY, VE, delta, a, k, j, Omega, Gamma, mu, gt, ht, gc, hc, ic, f, w, v,
                 VY_Algebra, VF_Algebra, Omega_Algebra, Gamma_Algebra, j_Algebra, gt_Algebra,
-                ht_Algebra, gc_Algebra, hc_Algebra, gchc_constraint_Algebra,
+                ht_Algebra, gc_Algebra, hc_Algebra, 
                 ic_Algebra, w_Algebra, v_Algebra, wv_constraint_algebra,
                 VY_Constraint, Omega_Constraint, Gamma_Constraint, j_constraint, gt_constraint, ht_constraint,
                 gc_constraint, hc_constraint, ic_constraint, v_constraint, w_constraint,

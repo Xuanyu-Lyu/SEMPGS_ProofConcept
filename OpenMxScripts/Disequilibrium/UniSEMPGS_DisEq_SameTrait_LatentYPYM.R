@@ -33,6 +33,14 @@ fitUniSEMPGS_DisEq_SameTrait_LatentParents <- function(data_path, h2_RDR, feaTol
     a     <- mxMatrix(type="Full", nrow=1, ncol=1, free=T, values=.7, label="a11", name="a", lbound = .001)
     k     <- mxMatrix(type="Full", nrow=1, ncol=1, free=F, values=.5, label="k11", name="k")
     j     <- mxMatrix(type="Full", nrow=1, ncol=1, free=F, values=.5, label="j11", name="j")
+    # k and j are fixed at .5, which assumes the PGS (and, by convention, the latent LGS) is standardised
+    # in the base population. Under disequilibrium there is no within-person haplotype covariance
+    # (gc = hc = 0), so the haplotypic PGS variance is k in every generation, but the offspring PGS
+    # variance is 2k + 2gt because its two haplotypes come from assorted parents. If the PGS is instead
+    # standardised to variance 1 in the offspring sample, replace the two fixed matrices above with
+    # k <- mxAlgebra(.5 - gt, name = "k")
+    # j <- mxAlgebra(.5 - ht, name = "j")
+    # (scaling the haplotypic PGS to variance 1/2 leaves k = j = .5 unchanged here).
 
     # Omega = delta*k + 0.5*w
     # Gamma = a*j + 0.5*v

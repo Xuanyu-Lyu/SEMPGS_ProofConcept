@@ -30,6 +30,16 @@ fitUniSEMPGS_DiffTrait_ObservedYPYM_FixedAParent <- function(data_path, h2_RDR_p
     
     k <- mxMatrix(type="Full", nrow=1, ncol=1, free=F, values=.5, label="k11", name="k")     
     j <- mxMatrix(type="Full", nrow=1, ncol=1, free=F, values=.5, label="j11", name="j")     
+    # k and j are fixed at .5, which assumes the PGS (and, by convention, the latent LGS) is standardised
+    # in the base population. Empirical PGS are usually scaled in the analysed sample, i.e. at equilibrium,
+    # where the haplotypic PGS variance is k + g and the full PGS variance is 2k + 4g (g = gc = gt, h = hc = ht).
+    # To use one of those scalings, replace the two fixed matrices above with the matching algebra pair:
+    #   haplotypic PGS scaled to variance 1/2 at equilibrium:  k = 1/2 - g,   j = 1/2 - h
+    # k <- mxAlgebra(.5 - gc, name = "k")
+    # j <- mxAlgebra(.5 - hc, name = "j")
+    #   full PGS standardised to variance 1 at equilibrium:    k = 1/2 - 2g,  j = 1/2 - 2h
+    # k <- mxAlgebra(.5 - 2 * gc, name = "k")
+    # j <- mxAlgebra(.5 - 2 * hc, name = "j")
 
     # 3. Covariances and Assortment
     Omega_p <- mxMatrix(type="Full", nrow=1, ncol=1, free=T, values=.3, label="Omega_p11", name="Omega_p") 
