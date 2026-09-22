@@ -3,9 +3,10 @@
 ## observed. Yp1/Ym1/Yo1 are dichotomous (0/1); Tp1/NTp1/Tm1/NTm1 (the transmitted / non-transmitted
 ## PGS) stay continuous. Identification of the liability scale follows the standard
 ## liability-threshold convention: total liability variance VY is fixed to 1 (not estimated), and
-## Yp1/Ym1/Yo1 share a single free threshold (same trait => same population prevalence assumed).
+## Yp1/Ym1/Yo1 each get their own free threshold. Optional covariates (covars) enter as definition variables on the PGS
+## means and on the thresholds, as in r2_omx_partial().
 
-fitUniSEMPGS_Binary_SameTrait_ObservedYPYM <- function(data_path, feaTol = 1e-6, optTol = 1e-8, jitterMean = .2, jitterVar = .05, extraTries = 30, exhaustive = F){
+fitUniSEMPGS_Binary_SameTrait_ObservedYPYM <- function(data_path, covars = NULL, feaTol = 1e-6, optTol = 1e-8, jitterMean = .2, jitterVar = .05, extraTries = 30, exhaustive = F){
     library(OpenMx)
     library(data.table)
     library(stringr)
@@ -18,8 +19,14 @@ fitUniSEMPGS_Binary_SameTrait_ObservedYPYM <- function(data_path, feaTol = 1e-6,
     mxOption(NULL,"Number of Threads", value = parallel::detectCores())
 
     Example_Data  <- fread(data_path, header = T)
+    obs_vars    <- c("Yp1", "Ym1", "Yo1", "Tp1", "NTp1", "Tm1", "NTm1")   # extra columns (e.g. covariates) are allowed
     binary_vars <- c("Yp1", "Ym1", "Yo1")
     for (v in binary_vars) Example_Data[[v]] <- mxFactor(Example_Data[[v]], levels = c(0, 1))
+    if (length(covars) > 0) {
+        missing_cov <- setdiff(covars, colnames(Example_Data))
+        if (length(missing_cov) > 0) stop("Covariate column(s) not found in data: ", paste(missing_cov, collapse = ", "))
+        Example_Data <- Example_Data[complete.cases(Example_Data[, covars, with = FALSE]), ]
+    }
 
     # Phenotypic and Residual Variance
     # Liability variance is FIXED at 1 (not free): identifies the scale of the binary/threshold model.
@@ -106,31 +113,46 @@ fitUniSEMPGS_Binary_SameTrait_ObservedYPYM <- function(data_path, feaTol = 1e-6,
         cbind(Omega,      Ym_PGSp,    thetaNT,   gc,      k+gc,    gt,      gt),
         cbind(Yp_PGSm,    Omega,      thetaT,    gt,      gt,      k+gc,    gc),
         cbind(Yp_PGSm,    Omega,      thetaNT,   gt,      gt,      gc,      k+gc)),
-        dimnames=list(colnames(Example_Data),colnames(Example_Data)), name="expCov")
+        dimnames=list(obs_vars, obs_vars), name="expCov")
 
     # Means: fixed at 0 for the binary phenotypes (identification requires fixing either the mean
     # or the threshold; we fix the mean and let the threshold float), free for the continuous PGS.
-    Means <- mxMatrix(type = "Full", nrow = 1, ncol = 7, free = c(F, F, F, T, T, T, T), values = 0,
+    # Each observed phenotype gets its own free threshold.
+    # Covariates (if any) enter as definition variables, as in r2_omx_partial(): every PGS mean
+    # becomes mean + sum(b * covar) and every threshold becomes t0 + sum(g * covar).
+    Means0 <- mxMatrix(type = "Full", nrow = 1, ncol = 7, free = c(F, F, F, T, T, T, T), values = 0,
         label = c("meanYp1", "meanYm1", "meanYo1", "meanTp1", "meanNTp1", "meanTm1", "meanNTm1"),
-        dimnames = list(NULL, c("Yp1", "Ym1", "Yo1", "Tp1", "NTp1", "Tm1", "NTm1")),
-        name = "expMeans")
+        dimnames = list(NULL, obs_vars), name = "Means0")
+    Th0 <- mxMatrix(type = "Full", nrow = 1, ncol = 3, free = TRUE, values = 0,
+        labels = c("thresh_Yp11", "thresh_Ym11", "thresh_Yo11"), name = "Th0")
+    if (length(covars) > 0) {
+        nCov   <- length(covars)
+        isCont <- !(obs_vars %in% binary_vars)
+        defCov <- mxMatrix(type = "Full", nrow = 1, ncol = nCov, free = FALSE, labels = paste0("data.", covars), name = "defCov")
+        bCov   <- mxMatrix(type = "Full", nrow = nCov, ncol = length(obs_vars), free = matrix(isCont, nCov, length(obs_vars), byrow = TRUE),
+            values = 0, labels = outer(covars, obs_vars, function(cv, vr) ifelse(vr %in% binary_vars, NA, paste0("b_", vr, "_", cv))), name = "bCov")
+        gCov   <- mxMatrix(type = "Full", nrow = nCov, ncol = length(binary_vars), free = TRUE, values = 0,
+            labels = outer(covars, binary_vars, function(cv, vr) paste0("g_", vr, "_", cv)), name = "gCov")
+        Means   <- mxAlgebra(Means0 + defCov %*% bCov, dimnames = list(NULL, obs_vars), name = "expMeans")
+        Th      <- mxAlgebra(Th0 + defCov %*% gCov, name = "Th")
+        CovObjs <- list(Means0, Th0, defCov, bCov, gCov)
+    } else {
+        Means   <- mxAlgebra(Means0, dimnames = list(NULL, obs_vars), name = "expMeans")
+        Th      <- mxAlgebra(Th0, name = "Th")
+        CovObjs <- list(Means0, Th0)
+    }
 
-    # Threshold matrix: Yp1, Ym1 and Yo1 share ONE free threshold (same trait => same prevalence).
-    Th <- mxMatrix(type = "Full", nrow = 1, ncol = 3, free = TRUE, values = 0,
-        labels = rep("thresh_Y11", 3), name = "Th")
-    threshVars <- c("Yp1", "Ym1", "Yo1")
-
-    ModelExpectations <- mxExpectationNormal(covariance="expCov", means="expMeans", dimnames=c("Yp1", "Ym1", "Yo1", "Tp1", "NTp1", "Tm1", "NTm1"),
-                                            thresholds="Th", threshnames=threshVars)
+    ModelExpectations <- mxExpectationNormal(covariance="expCov", means="expMeans", dimnames=obs_vars,
+                                            thresholds="Th", threshnames=binary_vars)
     Example_Data_Mx <- mxData(observed=Example_Data, type="raw" )
-    FitFunctionML   <- mxFitFunctionML()
+    FitFunctionML   <- mxFitFunctionML(jointConditionOn = "continuous")
 
     Params <- list(
                 VY, VE, delta, a, k, j, Omega, Gamma, mu, gt, ht, gc, hc, ic, f, w, v,
                 VY_Algebra, VF_Algebra, Omega_Algebra, Gamma_Algebra, adelta_Constraint_Algebra, j_Algebra, gt_Algebra, ht_Algebra, gc_Algebra, hc_Algebra, ic_Algebra, w_Algebra, v_Algebra, wv_constraint_algebra,
                 VY_Constraint, Gamma_Constraint, j_constraint, ht_constraint, hc_constraint, ic_constraint, v_constraint, w_constraint,
                 thetaNT, thetaT, Yp_PGSm, Ym_PGSp, Yp_Ym, Ym_Yp, Yo_Yp, Yo_Ym,
-                CovMatrix, Means, Th, ModelExpectations, FitFunctionML)
+                CovMatrix, CovObjs, Means, Th, ModelExpectations, FitFunctionML)
 
     Model1 <- mxModel("UniSEM_Binary_SameTrait_ObservedYPYM", Params, Example_Data_Mx)
     fitModel1 <- mxTryHard(Model1, extraTries = extraTries, OKstatuscodes = c(0,1), intervals=T, silent=T, exhaustive = exhaustive, jitterDistrib = "rnorm", loc=jitterMean, scale = jitterVar)

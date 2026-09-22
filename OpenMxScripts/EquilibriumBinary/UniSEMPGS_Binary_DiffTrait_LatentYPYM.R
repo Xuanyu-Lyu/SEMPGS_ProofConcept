@@ -4,6 +4,8 @@
 ## the (single, shared) liability variance VY is fixed to 1 for both generations -- i.e. the
 ## parental trait's own liability AND the offspring trait's liability are both standardized to the
 ## SAME scale, exactly like the continuous version equates their phenotypic variances.
+## Optional covariates (covars) enter as definition variables on the PGS
+## means and on the threshold, as in r2_omx_partial().
 ##
 ## IDENTIFICATION NOTE: with both traits fully latent on the parent side, the 5-variable data
 ## (Yo1, Tp1, NTp1, Tm1, NTm1) supply only 4 independent moments, one fewer than this model's free
@@ -15,7 +17,7 @@
 ## Equilibrium/UniSEMPGS_DiffTrait_ LatentYPYM.R and ConceptProof.md. Leaving it NULL reproduces
 ## the original (under-identified) behavior.
 
-fitUniSEMPGS_Binary_DiffTrait_LatentYPYM <- function(data_path, h2_RDR_parent, h2_RDR_offspring, mu_fixed = NULL, feaTol = 1e-6, optTol = 1e-8, jitterMean = .2, jitterVar = .05, extraTries = 30, exhaustive = F){
+fitUniSEMPGS_Binary_DiffTrait_LatentYPYM <- function(data_path, h2_RDR_parent, h2_RDR_offspring, mu_fixed = NULL, covars = NULL, feaTol = 1e-6, optTol = 1e-8, jitterMean = .2, jitterVar = .05, extraTries = 30, exhaustive = F){
     library(OpenMx)
     library(data.table)
     library(stringr)
@@ -30,7 +32,14 @@ fitUniSEMPGS_Binary_DiffTrait_LatentYPYM <- function(data_path, h2_RDR_parent, h
     mxOption(NULL,"Number of Threads", value = parallel::detectCores())
 
     Example_Data  <- fread(data_path, header = T)
+    obs_vars    <- c("Yo1", "Tp1", "NTp1", "Tm1", "NTm1")   # extra columns (e.g. covariates) are allowed
+    binary_vars <- "Yo1"
     Example_Data[["Yo1"]] <- mxFactor(Example_Data[["Yo1"]], levels = c(0, 1))
+    if (length(covars) > 0) {
+        missing_cov <- setdiff(covars, colnames(Example_Data))
+        if (length(missing_cov) > 0) stop("Covariate column(s) not found in data: ", paste(missing_cov, collapse = ", "))
+        Example_Data <- Example_Data[complete.cases(Example_Data[, covars, with = FALSE]), ]
+    }
 
     # 1. Phenotypic and Residual Variances
     # We define one VY matrix and equate both generations to it for identification.
@@ -111,17 +120,33 @@ fitUniSEMPGS_Binary_DiffTrait_LatentYPYM <- function(data_path, h2_RDR_parent, h
 
     # Yo1's mean is fixed at 0 (identification requires fixing either the mean or the threshold);
     # the PGS means stay free.
-    Means <- mxMatrix(type = "Full", nrow = 1, ncol = 5, free = c(F, T, T, T, T), values = 0,
+    # Covariates (if any) enter as definition variables, as in r2_omx_partial(): every PGS mean
+    # becomes mean + sum(b * covar) and the threshold becomes t0 + sum(g * covar).
+    Means0 <- mxMatrix(type = "Full", nrow = 1, ncol = 5, free = c(F, T, T, T, T), values = 0,
         label = c("meanYo1", "meanTp1", "meanNTp1", "meanTm1", "meanNTm1"),
-        dimnames = list(NULL, c("Yo1", "Tp1", "NTp1", "Tm1", "NTm1")), name = "expMeans")
-
-    Th <- mxMatrix(type = "Full", nrow = 1, ncol = 1, free = TRUE, values = 0,
-        labels = "thresh_Yo11", name = "Th")
+        dimnames = list(NULL, obs_vars), name = "Means0")
+    Th0 <- mxMatrix(type = "Full", nrow = 1, ncol = 1, free = TRUE, values = 0,
+        labels = "thresh_Yo11", name = "Th0")
+    if (length(covars) > 0) {
+        nCov   <- length(covars)
+        isCont <- !(obs_vars %in% binary_vars)
+        defCov <- mxMatrix(type = "Full", nrow = 1, ncol = nCov, free = FALSE, labels = paste0("data.", covars), name = "defCov")
+        bCov   <- mxMatrix(type = "Full", nrow = nCov, ncol = length(obs_vars), free = matrix(isCont, nCov, length(obs_vars), byrow = TRUE),
+            values = 0, labels = outer(covars, obs_vars, function(cv, vr) ifelse(vr %in% binary_vars, NA, paste0("b_", vr, "_", cv))), name = "bCov")
+        gCov   <- mxMatrix(type = "Full", nrow = nCov, ncol = length(binary_vars), free = TRUE, values = 0,
+            labels = outer(covars, binary_vars, function(cv, vr) paste0("g_", vr, "_", cv)), name = "gCov")
+        Means   <- mxAlgebra(Means0 + defCov %*% bCov, dimnames = list(NULL, obs_vars), name = "expMeans")
+        Th      <- mxAlgebra(Th0 + defCov %*% gCov, name = "Th")
+        CovObjs <- list(Means0, Th0, defCov, bCov, gCov)
+    } else {
+        Means   <- mxAlgebra(Means0, dimnames = list(NULL, obs_vars), name = "expMeans")
+        Th      <- mxAlgebra(Th0, name = "Th")
+        CovObjs <- list(Means0, Th0)
+    }
 
     # 9. Final Model and Constraints
-    ModelExpectations <- mxExpectationNormal(covariance="expCov", means="expMeans",
-                                            dimnames=c("Yo1", "Tp1", "NTp1", "Tm1", "NTm1"),
-                                            thresholds="Th", threshnames="Yo1")
+    ModelExpectations <- mxExpectationNormal(covariance="expCov", means="expMeans", dimnames=obs_vars,
+                                            thresholds="Th", threshnames=binary_vars)
 
     Constraints <- list(
         mxConstraint(VY == VY_p_Algebra, name="VY_p_eq"),
@@ -142,7 +167,7 @@ fitUniSEMPGS_Binary_DiffTrait_LatentYPYM <- function(data_path, h2_RDR_parent, h
         VY_p_Algebra, VF_p_Algebra, VY_o_Algebra, Omega_p_Algebra, Gamma_p_Algebra,
         gt_Algebra, ht_Algebra, ic_Algebra, w_Algebra, v_Algebra,
         h2mat_p, h2mat_o, rdr_left_p, rdr_right_p, rdr_left_o, rdr_right_o,
-        thetaNT, thetaT, CovMatrix, Means, Th, ModelExpectations, mxFitFunctionML(), Constraints
+        thetaNT, thetaT, CovMatrix, CovObjs, Means, Th, ModelExpectations, mxFitFunctionML(jointConditionOn = "continuous"), Constraints
     )
 
     Model1 <- mxModel("UniSEM_Binary_DiffTrait_Latent_Final", Params, mxData(observed=Example_Data, type="raw"))

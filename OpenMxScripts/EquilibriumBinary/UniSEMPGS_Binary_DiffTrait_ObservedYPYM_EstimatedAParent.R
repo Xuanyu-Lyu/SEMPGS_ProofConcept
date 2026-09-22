@@ -1,10 +1,11 @@
 ## Binary/liability-threshold version of UniSEMPGS_DiffTrait_ ObservedYPYM_EstiatedAParent.R:
 ## parent and offspring express DIFFERENT binary traits, and the parental phenotypes ARE observed.
-## Yp1/Ym1 (parent trait) share one free threshold; Yo1 (offspring trait) gets its own. RDR
-## identifies the offspring's 'a'; the parental 'a' is estimated from the observed parental data.
+## Yp1, Ym1 and Yo1 each get their own free threshold. RDR identifies the offspring's 'a'; the
+## parental 'a' is estimated from the observed parental data. Optional covariates (covars) enter as definition variables on the PGS
+## means and on the thresholds, as in r2_omx_partial().
 ## Each trait's liability variance (VY_p, VY_o) is independently fixed to 1.
 
-fitUniSEMPGS_Binary_DiffTrait_ObservedYPYM_EstimatedAParent <- function(data_path, h2_RDR_offspring, feaTol = 1e-6, optTol = 1e-8, jitterMean = .2, jitterVar = .05, extraTries = 30, exhaustive = F){
+fitUniSEMPGS_Binary_DiffTrait_ObservedYPYM_EstimatedAParent <- function(data_path, h2_RDR_offspring, covars = NULL, feaTol = 1e-6, optTol = 1e-8, jitterMean = .2, jitterVar = .05, extraTries = 30, exhaustive = F){
     library(OpenMx)
     library(data.table)
     library(stringr)
@@ -17,7 +18,14 @@ fitUniSEMPGS_Binary_DiffTrait_ObservedYPYM_EstimatedAParent <- function(data_pat
     mxOption(NULL,"Number of Threads", value = parallel::detectCores())
 
     Example_Data  <- fread(data_path, header = T)
-    for (v in c("Yp1","Ym1","Yo1")) Example_Data[[v]] <- mxFactor(Example_Data[[v]], levels = c(0, 1))
+    obs_vars    <- c("Yp1", "Ym1", "Yo1", "Tp1", "NTp1", "Tm1", "NTm1")   # extra columns (e.g. covariates) are allowed
+    binary_vars <- c("Yp1", "Ym1", "Yo1")
+    for (v in binary_vars) Example_Data[[v]] <- mxFactor(Example_Data[[v]], levels = c(0, 1))
+    if (length(covars) > 0) {
+        missing_cov <- setdiff(covars, colnames(Example_Data))
+        if (length(missing_cov) > 0) stop("Covariate column(s) not found in data: ", paste(missing_cov, collapse = ", "))
+        Example_Data <- Example_Data[complete.cases(Example_Data[, covars, with = FALSE]), ]
+    }
 
     # 1. Phenotypic and Residual Variances (Separated)
     # Each trait's liability variance is FIXED at 1 (not free), independently for parent/offspring.
@@ -93,21 +101,38 @@ fitUniSEMPGS_Binary_DiffTrait_ObservedYPYM_EstimatedAParent <- function(data_pat
         cbind(Omega_p,      Yp_PGSm,    thetaNT,   gc,      k+gc,    gt_Algebra, gt_Algebra), # NTp
         cbind(Yp_PGSm,      Omega_p,    thetaT,    gt_Algebra, gt_Algebra, k+gc,    gc), # Tm
         cbind(Yp_PGSm,      Omega_p,    thetaNT,   gt_Algebra, gt_Algebra, gc,      k+gc)), # NTm
-        dimnames=list(colnames(Example_Data), colnames(Example_Data)), name="expCov")
+        dimnames=list(obs_vars, obs_vars), name="expCov")
 
     # 9. Means and Expectations
-    # Yp1/Ym1/Yo1 means fixed at 0 (identification requires fixing either the mean or the
-    # threshold); the PGS means stay free.
-    Means <- mxMatrix(type = "Full", nrow = 1, ncol = 7, free = c(F, F, F, T, T, T, T), values = 0,
+    # Means: fixed at 0 for the binary phenotypes (identification requires fixing either the mean
+    # or the threshold; we fix the mean and let the threshold float), free for the continuous PGS.
+    # Each observed phenotype gets its own free threshold.
+    # Covariates (if any) enter as definition variables, as in r2_omx_partial(): every PGS mean
+    # becomes mean + sum(b * covar) and every threshold becomes t0 + sum(g * covar).
+    Means0 <- mxMatrix(type = "Full", nrow = 1, ncol = 7, free = c(F, F, F, T, T, T, T), values = 0,
         label = c("meanYp1", "meanYm1", "meanYo1", "meanTp1", "meanNTp1", "meanTm1", "meanNTm1"),
-        dimnames = list(NULL, colnames(Example_Data)), name = "expMeans")
+        dimnames = list(NULL, obs_vars), name = "Means0")
+    Th0 <- mxMatrix(type = "Full", nrow = 1, ncol = 3, free = TRUE, values = 0,
+        labels = c("thresh_Yp11", "thresh_Ym11", "thresh_Yo11"), name = "Th0")
+    if (length(covars) > 0) {
+        nCov   <- length(covars)
+        isCont <- !(obs_vars %in% binary_vars)
+        defCov <- mxMatrix(type = "Full", nrow = 1, ncol = nCov, free = FALSE, labels = paste0("data.", covars), name = "defCov")
+        bCov   <- mxMatrix(type = "Full", nrow = nCov, ncol = length(obs_vars), free = matrix(isCont, nCov, length(obs_vars), byrow = TRUE),
+            values = 0, labels = outer(covars, obs_vars, function(cv, vr) ifelse(vr %in% binary_vars, NA, paste0("b_", vr, "_", cv))), name = "bCov")
+        gCov   <- mxMatrix(type = "Full", nrow = nCov, ncol = length(binary_vars), free = TRUE, values = 0,
+            labels = outer(covars, binary_vars, function(cv, vr) paste0("g_", vr, "_", cv)), name = "gCov")
+        Means   <- mxAlgebra(Means0 + defCov %*% bCov, dimnames = list(NULL, obs_vars), name = "expMeans")
+        Th      <- mxAlgebra(Th0 + defCov %*% gCov, name = "Th")
+        CovObjs <- list(Means0, Th0, defCov, bCov, gCov)
+    } else {
+        Means   <- mxAlgebra(Means0, dimnames = list(NULL, obs_vars), name = "expMeans")
+        Th      <- mxAlgebra(Th0, name = "Th")
+        CovObjs <- list(Means0, Th0)
+    }
 
-    # Yp1/Ym1 share one free threshold (same parent trait); Yo1 (a different trait) gets its own.
-    Th <- mxMatrix(type = "Full", nrow = 1, ncol = 3, free = TRUE, values = 0,
-        labels = c("thresh_Yp11", "thresh_Yp11", "thresh_Yo11"), name = "Th")
-
-    ModelExpectations <- mxExpectationNormal(covariance="expCov", means="expMeans", dimnames=colnames(Example_Data),
-                                            thresholds="Th", threshnames=c("Yp1","Ym1","Yo1"))
+    ModelExpectations <- mxExpectationNormal(covariance="expCov", means="expMeans", dimnames=obs_vars,
+                                            thresholds="Th", threshnames=binary_vars)
 
     # 10. Constraints
     Constraints <- list(
@@ -128,7 +153,7 @@ fitUniSEMPGS_Binary_DiffTrait_ObservedYPYM_EstimatedAParent <- function(data_pat
         VY_p_Algebra, VF_p_Algebra, VY_o_Algebra, Omega_p_Algebra, Gamma_p_Algebra,
         gt_Algebra, ht_Algebra, ic_Algebra, w_Algebra, v_Algebra,
         h2mat_o, rdr_left_o, rdr_right_o, thetaNT, thetaT, Yp_Ym, Yo_Yp, Yp_PGSm,
-        CovMatrix, Means, Th, ModelExpectations, mxFitFunctionML(), Constraints
+        CovMatrix, CovObjs, Means, Th, ModelExpectations, mxFitFunctionML(jointConditionOn = "continuous"), Constraints
     )
 
     Model1 <- mxModel("UniSEM_Binary_DiffTrait_ObservedParents_RDR", Params, mxData(observed=Example_Data, type="raw"))
