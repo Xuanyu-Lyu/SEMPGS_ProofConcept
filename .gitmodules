@@ -1,3 +1,4 @@
 [submodule "GeneEvolve-Python"]
 	path = GeneEvolve-Python
 	url = https://github.com/Xuanyu-Lyu/GeneEvolve-Python.git
+	branch = cascade-mating
