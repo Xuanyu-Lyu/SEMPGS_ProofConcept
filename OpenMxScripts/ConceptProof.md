@@ -68,9 +68,22 @@ Omega = delta*k + .5*w   with  w = 2*f*Omega     (=> Omega = delta*k/(1-f))
 Gamma = a*j + .5*v       with  v = 2*f*Gamma
 VY    = 2*delta*Omega + 2*a*Gamma + delta*w + a*v + VF + VE ,  VF = 2*f^2*VY
 gt    = Omega^2*mu ; ht = Gamma^2*mu ; ic = Omega*Gamma*mu   (one generation of AM)
-thetaNT = 2*a*ic + 2*delta*gt + w ;  thetaT = 2*delta*k + thetaNT
-Yo_Yp = delta*Omega + a*Gamma + f*VY + (delta*Omega + a*Gamma)*mu*VY
 ```
+
+The offspring of that first AM event carry the parents' cross-spouse haplotype covariances (gt, ht, ic)
+between their own two haplotypes, but no within-haplotype AM covariance yet. Their F comes from AM-mated
+parents, so it carries the `mu` feedback. Per data column (one parental haplotype):
+
+```
+w_o  = 2*f*Omega*(1 + mu*VY) ;  v_o = 2*f*Gamma*(1 + mu*VY) ;  VF_o = 2*f^2*VY*(1 + mu*VY)
+thetaNT = delta*gt + a*ic + .5*w_o ;  thetaT = delta*k + thetaNT
+VY_o  = 2*delta^2*(k + gt) + 2*a^2*(j + ht) + 4*delta*a*ic + 2*delta*w_o + 2*a*v_o + VF_o + VE
+Yo_Yp = (delta*Omega + a*Gamma + f*VY)*(1 + mu*VY)
+```
+
+In the papers θ is the sum over the father's and the mother's haplotype, `thetaNT = cov(Yo, NTp + NTm)`;
+the scripts' θ, which is per data column, is half of that. `VY_o` is the variance of `Yo1` in the
+SameTrait models.
 
 In the disequilibrium models `gt/ht/ic/w/v` are pure `mxAlgebra`s (functions of the free
 parameters), whereas in the equilibrium models they are free parameters tied down by
@@ -115,10 +128,10 @@ with `gc, hc, ic, w, v, mu` taken from the parental-trait equilibrium process; `
 | 10 | `UniSEMPGS_DisEq_DiffTrait_ObservedYPYM_FixedAParent.R` | `UniSEMPGS_DisEq_Binary_DiffTrait_ObservedYPYM_FixedAParent.R` | 7 vars | RDR for both generations |
 
 Same layout as #1–#5 but with the disequilibrium equations of §2: `gc=hc=0` fixed, `gt/ht/ic/w/v` as
-algebras, and the offspring-trait variance simplifying to
+algebras, and the offspring-trait variance being the offspring's own
 
 ```
-VY_o = 2*delta_o^2*k + 2*a_o^2*j + 2*delta_o*w + 2*a_o*v + 2*f^2*VY_p + VE_o
+VY_o = 2*delta_o^2*(k + gt) + 2*a_o^2*(j + ht) + 4*delta_o*a_o*ic + 2*delta_o*w_o + 2*a_o*v_o + VF_o + VE_o
 ```
 
 ### Binary variants: liability-threshold identification
@@ -238,10 +251,14 @@ Continuous suites (`extraTries = 8`, n = 32,000, flag tolerance `.02`):
 | Eq DiffTrait Observed, estimated a_p | **PASS** | 1e-04 |
 | Eq DiffTrait Observed, RDR-fixed a_p | **PASS** | 6e-05 |
 | DisEq SameTrait Observed | **PASS** | 4e-05 |
-| DisEq SameTrait Latent (RDR) | **PASS** | 5e-05 |
-| DisEq DiffTrait Latent (2×RDR, `mu_fixed`) | **PASS** | ~1e-4 |
-| DisEq DiffTrait Observed, estimated a_p | **PASS** | 5e-05 |
-| DisEq DiffTrait Observed, RDR-fixed a_p | **PASS** | 3e-05 |
+| DisEq SameTrait Latent (RDR) | **PASS** | 4e-05 |
+| DisEq DiffTrait Latent (2×RDR, `mu_fixed`) | **PASS** | 3e-03 (SE of `VE_*` ≈ .13–.22) |
+| DisEq DiffTrait Observed, estimated a_p | **PASS** | 2e-04 |
+| DisEq DiffTrait Observed, RDR-fixed a_p | **PASS** | 4e-05 |
+
+(DisEq rows re-run after the §6 item 9 correction, Sep 2026.) In the binary suite below, DisEq SameTrait Observed and Latent have
+been re-run after the correction (PASS; largest errors 0.004 and 0.009, within 0.3 SE); the DisEq DiffTrait rows
+are from the pre-correction run until their re-run finishes.
 
 All ten continuous models recover every free parameter essentially exactly, which verifies the
 OpenMx implementations against the iterative math. (The two DiffTrait_Latent models originally
@@ -277,6 +294,14 @@ a fixed sign across seeds). The `EstimatedAParent` variant is consistently noisi
 a source of estimation noise), so it is the more likely of the two designs to brush up against
 whatever flag tolerance is chosen.
 
+**Standard errors of the DisEq SameTrait Observed script on simulated data.** Fitting the corrected
+`Disequilibrium/UniSEMPGS_DisEq_SameTrait_ObservedYPYM.R` to 36 GeneEvolve populations (~4,000 trios each,
+`../OpenMxScripts_Cascade/Validation/07_original_diseq_check.R`) gives unbiased estimates: every mean is within
+2 SE of the truth, and so is the pooled fit. The SEs OpenMx reports for `a`, `f`, `VE` and `Gamma` are
+2–2.8× smaller than the actual spread across populations. The SEs for `mu`, `Omega`, `delta` and `VY` are about
+right. The equilibrium scripts do not show this. Until the cause is known, use likelihood-based intervals
+(`mxCI`) or a bootstrap for `a`, `f` and `VE` from the DisEq SameTrait Observed script.
+
 ## 6. Fixes discovered by the tests
 
 The first test runs surfaced several latent bugs in the fitting scripts, all now fixed:
@@ -289,6 +314,21 @@ The first test runs surfaced several latent bugs in the fitting scripts, all now
 6. **The DiffTrait_LatentYPYM design (#3, #8) was genuinely under-identified**, not just imprecisely estimated: the 5-variable latent data supply one fewer independent moment than the model's free dimensions. Fixing an externally-known `mu_fixed` (not `f` — fixing `f` alone converges cleanly to a *wrong* point, since the remaining `Omega_p`/`mu` degeneracy is unrelated to `f`) resolves it; see §3.
 7. Once `mu_fixed` was added, all four `DiffTrait_LatentYPYM` scripts (continuous + binary, both regimes) turned out to have a second, previously-invisible problem: `Omega_p`, `delta_p`, and `f` had no sign constraint (only `a_p`/`a_o` did), so the optimizer could land on a mirror-image solution with all three (and everything depending on them) wrong. Added `lbound = .001` to `Omega_p`, `delta_p`, and `f` in all four scripts, matching the pre-existing `a_p`/`a_o` convention; verified `Omega_p` now recovers to ~1e-6 instead of landing on `-Omega_p`.
 8. The `itlo`/`itol` pair in the fitting scripts (first the disequilibrium scripts, later also the four equilibrium `SameTrait` scripts, continuous and binary) was dead weight: for scalars `Gamma*mu*Omega == Omega*mu*Gamma`, so `itlo` and `itol` always held the same value and were only ever used as `a*itlo + a*itol`. Replaced with a single `ic` quantity (`ic_Algebra = Omega*mu*Gamma`) and `thetaNT = 2*a*ic + 2*delta*gt + w`, matching the equilibrium scripts' existing `ic`-based convention. `itlo`/`itol` only need to be distinguished once `Omega`/`Gamma` become asymmetric (bivariate) matrices.
+
+9. **Disequilibrium offspring-side algebra (Sep 2026).** The disequilibrium scripts had four problems, all found
+   by checking the SEM-PGS Cascade scripts against GeneEvolve (`../OpenMxScripts_Cascade/Validation/`):
+   * They used the papers' two-haplotype θ (`thetaNT = 2*a*ic + 2*delta*gt + w`, `thetaT = 2*delta*k + thetaNT`,
+     i.e. `cov(Yo, NTp + NTm)`) for the single-haplotype data columns. That is twice the correct value, and at
+     larger `delta` (e.g. `delta^2 = .2`) it makes the implied covariance matrix non-positive-definite.
+   * They set the offspring's variance to the parents' `VY`.
+   * They used the parents' `w`/`VF` for the offspring, whose F comes from AM-mated parents.
+   * `Yo_Yp` omitted `f*cov(Ym, Yp) = f*mu*VY^2`.
+
+   All ten disequilibrium scripts, `00-UniIterativeMath_DisEq*.R` and both DisEq test scripts now use the §2
+   forms. The old tests passed only because they generated their data with the same formulas; they could not
+   test the derivation. The corrected forms match a GeneEvolve simulation within ~2%, versus 2× (θ) and 10–14%
+   (offspring VY) for the old ones. The SEM-PGS Cascade PDF has related errors in its generation-2 formulas
+   (`../OpenMxScripts_Cascade/PDF_Errata.md`).
 
 ## 7. Reproducing
 

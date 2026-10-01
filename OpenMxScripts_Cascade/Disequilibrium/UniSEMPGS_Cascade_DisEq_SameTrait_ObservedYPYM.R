@@ -1,9 +1,20 @@
+## SEM-PGS CASCADE version of OpenMxScripts/Disequilibrium/UniSEMPGS_DisEq_SameTrait_ObservedYPYM.R: the same model, except that spouses
+## assort on the latent mating phenotype gamma~ = delta~*(T+NT) + a~*(LT+LNT) + 1~*F + 1~*E instead of on Y
+## (SEM_PGS_Cascade_model.pdf, Part IV). Following the ETFD Cascade MVN scripts, each path into
+## gamma~ is the path into Y times a multiplier: AM_G on the genetic paths (delta~ = AM_G*delta, a~ = AM_G*a)
+## and AM_E on the non-genetic paths (the PDF's 1~ on F and E). AM_G = AM_E = 1: primary phenotypic AM;
+## AM_E = 0: genetic homogamy; AM_G = 0: social homogamy. gamma~ has no scale of its own, so at least one
+## multiplier must be fixed (default AM_E = 1, the analogue of the MVN script's fixed AM_U); mu is the
+## copath between spouses' gamma~. By default AM_G is estimated; for genetic homogamy fix AM_G = 1 and free AM_E instead.
+## Offspring side, derived from Yo = delta*(Tp+Tm) + a*(LTp+LTm) + Fo + Eo (see ../PDF_Errata.md): the offspring's
+## haplotypes covary across parents (gt, ht, ic), their F comes from AM-mated parents (w_o, v_o, VF_o carry the
+## tau*mu terms), they have their own phenotypic variance VY_o, and thetaT/thetaNT are per single-haplotype
+## column (the papers' theta is the sum over the father's and the mother's haplotype). Yo_Yp follows PDF
+## Part IV Section 19 (it includes f*tau^2*mu = f*cov(Ym, Yp), which the original DisEq Yo_Yp omits).
+##
 ## This script is a function that fits a version univariate SEM-PGS where parent and offspring have the same trait and the parental phenotypes are observed.
-## Offspring generation (corrected Sep 2026; see ../ConceptProof.md Section 6): thetaT/thetaNT are per single-haplotype
-## column (the papers' theta is the sum over the father's and the mother's haplotype), the offspring's F carries
-## the AM feedback (w_o, v_o, VF_o), the offspring have their own variance VY_o, and Yo_Yp includes f*mu*VY^2.
 ## This script is for trait that is not in equilibrium
-fitUniSEMPGS_DisEq_SameTrait_ObservedYPYM <- function(data_path, feaTol = 1e-6, optTol = 1e-8, jitterMean = .5, jitterVar = .1, extraTries = 30, exhaustive = F){
+fitUniSEMPGS_Cascade_DisEq_SameTrait_ObservedYPYM <- function(data_path, AM_G_value = .5, AM_G_free = TRUE, AM_E_value = 1, AM_E_free = FALSE, feaTol = 1e-6, optTol = 1e-8, jitterMean = .5, jitterVar = .1, extraTries = 30, exhaustive = F){
     library(OpenMx)
     library(data.table)
     library(stringr)
@@ -65,9 +76,9 @@ fitUniSEMPGS_DisEq_SameTrait_ObservedYPYM <- function(data_path, feaTol = 1e-6, 
     # transmitted-vs-non-transmitted haplotype covariances -- collapse to a single quantity 'ic'
     # here because Gamma*mu*Omega == Omega*mu*Gamma for scalars; the itlo/itol split only matters
     # once Omega and Gamma become asymmetric matrices in the bivariate model.)
-    gt_Algebra <- mxAlgebra(Omega * mu * Omega, name="gt_Algebra")
-    ht_Algebra <- mxAlgebra(Gamma * mu * Gamma, name="ht_Algebra")
-    ic_Algebra <- mxAlgebra(Omega * mu * Gamma, name="ic_Algebra")
+    gt_Algebra <- mxAlgebra(Omega_td * mu * Omega_td, name="gt_Algebra")
+    ht_Algebra <- mxAlgebra(Gamma_td * mu * Gamma_td, name="ht_Algebra")
+    ic_Algebra <- mxAlgebra(Omega_td * mu * Gamma_td, name="ic_Algebra")
 
     gt <- mxAlgebra(gt_Algebra, name="gt")
     ht <- mxAlgebra(ht_Algebra, name="ht")
@@ -85,17 +96,17 @@ fitUniSEMPGS_DisEq_SameTrait_ObservedYPYM <- function(data_path, feaTol = 1e-6, 
 
     # ---- Offspring generation ----
     # The offspring's F comes from AM-mated parents, so its covariance with the parents' haplotypes (w_o, v_o)
-    # and its variance (VF_o) carry the cross-mate term mu*VY. (w, v and the VF algebra above belong to the
-    # parents, whose own parents mated at random.)
-    w_o  <- mxAlgebra(2 * f * Omega + 2 * f * VY * mu * Omega, name="w_o")
-    v_o  <- mxAlgebra(2 * f * Gamma + 2 * f * VY * mu * Gamma, name="v_o")
-    VF_o <- mxAlgebra(2 * f^2 * VY + 2 * f^2 * VY^2 * mu, name="VF_o")
+    # and its variance (VF_o) carry the cross-mate tau*mu terms (PDF Part IV Section 18: w2, v2, VF2).
+    # (w, v and the VF algebra above belong to the parents, whose own parents mated at random.)
+    w_o  <- mxAlgebra(2 * f * Omega + 2 * f * tau * mu * Omega_td, name="w_o")
+    v_o  <- mxAlgebra(2 * f * Gamma + 2 * f * tau * mu * Gamma_td, name="v_o")
+    VF_o <- mxAlgebra(2 * f^2 * VY + 2 * f^2 * tau^2 * mu, name="VF_o")
     # thetaNT / thetaT: covariance of Yo with ONE parental haplotype, i.e. with one data column (NTp1, Tp1, ...).
-    # NOTE: in the papers (Balbona et al. 2021; Lyu et al.) theta is the SUM over the father's and the mother's
-    # haplotype, thetaNT = cov(Yo, NTp + NTm) = 2*delta*gt + 2*a*ic + w_o: twice these.
+    # NOTE: in the papers (Balbona et al. 2021, Lyu et al., SEM_PGS_Cascade_model.pdf) theta is the SUM over the
+    # father's and the mother's haplotype, thetaNT = cov(Yo, NTp + NTm) = 2*delta*gt + 2*a*ic + w_o: twice these.
     # The parents' own two haplotypes are uncorrelated (gc = hc = 0: first AM event), so per haplotype
     #   cov(Yo, NTp) = delta*cov(Tm, NTp) + a*cov(LTm, NTp) + cov(Fo, NTp) = delta*gt + a*ic + w_o/2
-    # (ic here is the across-parent LGS-PGS covariance Omega*mu*Gamma)
+    # (ic here is the across-parent LGS-PGS covariance Omega_td*mu*Gamma_td)
     thetaNT <- mxAlgebra(delta * gt + a * ic + 0.5 * w_o, name="thetaNT")
     # cov(Yo, Tp) adds delta*var(Tp) = delta*k
     thetaT  <- mxAlgebra(delta * k + thetaNT, name="thetaT")
@@ -104,12 +115,27 @@ fitUniSEMPGS_DisEq_SameTrait_ObservedYPYM <- function(data_path, feaTol = 1e-6, 
     VY_o_Algebra <- mxAlgebra(2 * delta^2 * k + 2 * delta^2 * gt + 2 * a^2 * j + 2 * a^2 * ht + 4 * delta * a * ic + 2 * delta * w_o + 2 * a * v_o + VF_o + VE, name="VY_o_Algebra")
     
     # Cross-parental expectations
-    Yp_PGSm <- mxAlgebra(VY * mu * Omega, name="Yp_PGSm")
-    Ym_PGSp <- mxAlgebra(VY * mu * Omega, name="Ym_PGSp")
-    Yp_Ym   <- mxAlgebra(VY * mu * VY,    name="Yp_Ym")
+    Yp_PGSm <- mxAlgebra(tau * mu * Omega_td, name="Yp_PGSm")
+    Ym_PGSp <- mxAlgebra(tau * mu * Omega_td, name="Ym_PGSp")
+    Yp_Ym   <- mxAlgebra(tau * mu * tau,    name="Yp_Ym")
     
-    # Offspring-parent: cov(Yo, Yp) = delta*[cov(Tp,Yp) + cov(Tm,Yp)] + a*[cov(LTp,Yp) + cov(LTm,Yp)] + f*[VY + cov(Ym,Yp)]
-    Yo_Yp   <- mxAlgebra((delta*Omega + a*Gamma + f*VY)*(1 + mu*VY), name = "Yo_Yp")
+    # Offspring-parent covariance (PDF Part IV Section 19): cov(Yo, Yp) = delta*[cov(Tp,Yp) + cov(Tm,Yp)]
+    # + a*[cov(LTp,Yp) + cov(LTm,Yp)] + f*[VY + cov(Ym,Yp)], with the cross-mate terms tau*mu*(...)
+    Yo_Yp   <- mxAlgebra(delta * Omega + a * Gamma + f * VY + tau * mu * (delta * Omega_td + a * Gamma_td + f * tau), name = "Yo_Yp")
+
+    # ---- Cascade AM: latent mating phenotype gamma~ ----
+    # Tilde paths = multiplier x the path into Y (ETFD Cascade MVN scripts); see the header for AM_G / AM_E.
+    AM_G <- mxMatrix(type="Full", nrow=1, ncol=1, free=AM_G_free, values=AM_G_value, label="AMGenMulti", name="AM_G")
+    AM_E <- mxMatrix(type="Full", nrow=1, ncol=1, free=AM_E_free, values=AM_E_value, label="AMEnvMulti", name="AM_E")
+    delta_td <- mxAlgebra(delta * AM_G, name="delta_td")
+    a_td     <- mxAlgebra(a * AM_G, name="a_td")
+    # Shortcuts to gamma~ (PDF Part IV Section 15): Omega_td = cov(gamma~, [N]T), Gamma_td = cov(gamma~, L[N]T),
+    # zeta = cov(gamma~, F), tau = cov(Y, gamma~), Vgamma = var(gamma~)
+    Omega_td <- mxAlgebra(delta_td * k + 0.5 * AM_E * w, name="Omega_td")
+    Gamma_td <- mxAlgebra(a_td * j + 0.5 * AM_E * v, name="Gamma_td")
+    zeta     <- mxAlgebra(delta_td * w + a_td * v + AM_E * VF_Algebra, name="zeta")
+    tau      <- mxAlgebra(2 * a * Gamma_td + 2 * delta * Omega_td + zeta + AM_E * VE, name="tau")
+    Vgamma   <- mxAlgebra(2 * a_td * Gamma_td + 2 * delta_td * Omega_td + AM_E * zeta + AM_E^2 * VE, name="Vgamma")
 
     # --- Expected Covariance Matrix ---
     CovMatrix <- mxAlgebra(rbind(
@@ -133,6 +159,7 @@ fitUniSEMPGS_DisEq_SameTrait_ObservedYPYM <- function(data_path, feaTol = 1e-6, 
 
     Params <- list(
                 w_o, v_o, VF_o, VY_o_Algebra,
+                AM_G, AM_E, delta_td, a_td, Omega_td, Gamma_td, zeta, tau, Vgamma,
                 VY, VE, delta, a, k, j, Omega, Gamma, mu, gc, hc, f,
                 VY_Algebra, VF_Algebra, Omega_Algebra, Gamma_Algebra,
                 gt_Algebra, ht_Algebra, ic_Algebra, w_Algebra, v_Algebra,
@@ -141,7 +168,7 @@ fitUniSEMPGS_DisEq_SameTrait_ObservedYPYM <- function(data_path, feaTol = 1e-6, 
                 thetaNT, thetaT, Yp_PGSm, Ym_PGSp, Yp_Ym, Yo_Yp, 
                 CovMatrix, Means, ModelExpectations, FitFunctionML)
 
-    Model1 <- mxModel("UniSEM_NonEquilibrium", Params, Example_Data_Mx)
+    Model1 <- mxModel("Cascade_UniSEM_NonEquilibrium", Params, Example_Data_Mx)
     fitModel1 <- mxTryHard(Model1, extraTries = extraTries, OKstatuscodes = c(0,1), intervals=T, silent=T, exhaustive = exhaustive)
     
     return(summary(fitModel1, verbose = TRUE))

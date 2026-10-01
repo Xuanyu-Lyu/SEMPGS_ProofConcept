@@ -52,17 +52,21 @@ uniIterativeMath_DisEq <- function(delta, a, f, VE, am, k = .5, j = .5, gens = 1
     itol <- Omega*mu*Gamma
     gc <- hc <- ic <- 0                   # no AM in any previous generation
 
-    # derived covariance pieces (same expressions as the DisEq fitting scripts)
-    thetaNT <- a*itlo + a*itol + 2*delta*gt + w
-    thetaT  <- 2*delta*k + thetaNT
+    # offspring generation (same expressions as the DisEq fitting scripts; see the header)
+    w_o  <- 2*f*Omega + 2*f*VY*mu*Omega
+    v_o  <- 2*f*Gamma + 2*f*VY*mu*Gamma
+    VF_o <- 2*f^2*VY + 2*f^2*mu*VY^2
+    thetaNT <- delta*gt + a*itol + .5*w_o            # cov(Yo, NTp): ONE parental haplotype
+    thetaT  <- delta*k + thetaNT                     # cov(Yo, Tp)
+    VY_off  <- 2*delta^2*(k + gt) + 2*a^2*(j + ht) + 4*delta*a*itol + 2*delta*w_o + 2*a*v_o + VF_o + VE
     Yp_PGSm <- VY*mu*Omega
     Yp_Ym   <- mu*VY^2
-    Yo_Yp   <- delta*Omega + a*Gamma + f*VY + (delta*Omega + a*Gamma)*mu*VY
+    Yo_Yp   <- (delta*Omega + a*Gamma + f*VY)*(1 + mu*VY)
 
     list(delta = delta, a = a, f = f, VE = VE, am = am, k = k, j = j,
          VY = VY, mu = mu, Omega = Omega, Gamma = Gamma,
          gt = gt, ht = ht, gc = gc, hc = hc, itlo = itlo, itol = itol, ic = ic,
-         w = w, v = v, VF = VF,
+         w = w, v = v, VF = VF, w_o = w_o, v_o = v_o, VF_o = VF_o, VY_off = VY_off,
          thetaNT = thetaNT, thetaT = thetaT,
          Yp_PGSm = Yp_PGSm, Yp_Ym = Yp_Ym, Yo_Yp = Yo_Yp,
          converged = converged, generations = it_used)
@@ -82,10 +86,31 @@ checkDisEqConsistency <- function(q, tol = 1e-8){
             abs(gt - Omega^2*mu) < tol,
             abs(ht - Gamma^2*mu) < tol,
             gc == 0, hc == 0, ic == 0,
-            abs(mu - am/VY) < tol
+            abs(mu - am/VY) < tol,
+            abs(w_o - (2*f*Omega + 2*f*VY*mu*Omega)) < tol,
+            abs(VF_o - (2*f^2*VY + 2*f^2*mu*VY^2)) < tol,
+            abs(thetaNT - (delta*gt + a*itol + .5*w_o)) < tol,
+            abs(thetaT - (delta*k + thetaNT)) < tol,
+            abs(VY_off - (2*delta^2*k + 2*delta^2*gt + 2*a^2*j + 2*a^2*ht + 4*delta*a*itol +
+                          2*delta*w_o + 2*a*v_o + VF_o + VE)) < tol
         )
     })
     invisible(TRUE)
+}
+
+## Offspring-trait quantities for the DiffTrait designs (same algebra as the DisEq DiffTrait scripts): the offspring
+## trait loads delta_o / a_o on the same haplotypes and receives the same Fo. Supply VE_o, or VY_o_target to solve
+## VE_o so that the offspring-trait variance equals the target (the DiffTrait_Latent models need VY_o == VY_p).
+diffTraitOffspring_DisEq <- function(parent, delta_o, a_o, VE_o = NULL, VY_o_target = NULL){
+    VYo_terms <- with(parent, 2*delta_o^2*(k + gt) + 2*a_o^2*(j + ht) + 4*delta_o*a_o*itol +
+                              2*delta_o*w_o + 2*a_o*v_o + VF_o)
+    if (is.null(VE_o)) VE_o <- VY_o_target - VYo_terms
+    stopifnot(VE_o > 0)
+    thetaNT_o <- with(parent, delta_o*gt + a_o*itol + .5*w_o)     # per single haplotype
+    thetaT_o  <- delta_o*parent$k + thetaNT_o
+    Yo_Yp_o   <- with(parent, (delta_o*Omega + a_o*Gamma + f*VY)*(1 + mu*VY))
+    list(delta_o = delta_o, a_o = a_o, VE_o = VE_o, VY_o = VYo_terms + VE_o,
+         VYo_terms = VYo_terms, thetaNT_o = thetaNT_o, thetaT_o = thetaT_o, Yo_Yp_o = Yo_Yp_o)
 }
 
 ## ---------------------------------------------------------------------------
@@ -104,14 +129,7 @@ uniIterativeMath_DisEq_Binary <- function(delta, a, f, VE, am, k = .5, j = .5, g
 
 ## Given an already-standardized parent-trait disequilibrium point (VY_p == 1) and a choice of
 ## offspring generation's delta_o/a_o, solve for the VE_o that makes the offspring's implied
-## liability variance equal exactly 1 too (disequilibrium DiffTrait formula: gc=hc=ic=0).
+## liability variance equal exactly 1 too (the offspring trait's own variance; see diffTraitOffspring_DisEq).
 solve_VYo_DisEq_Binary <- function(delta_o, a_o, k, j, parent, target = 1){
-    VYo_terms <- with(parent, 2*delta_o^2*k + 2*a_o^2*j + 2*delta_o*w + 2*a_o*v + 2*f^2*VY)
-    VE_o <- target - VYo_terms
-    stopifnot(VE_o > 0)
-    thetaNT_o <- with(parent, a_o*itlo + a_o*itol + 2*delta_o*gt + w)
-    thetaT_o  <- 2*delta_o*k + thetaNT_o
-    Yo_Yp_o   <- with(parent, delta_o*Omega + a_o*Gamma + f*VY + (delta_o*Omega + a_o*Gamma)*mu*VY)
-    list(delta_o = delta_o, a_o = a_o, VE_o = VE_o, VY_o = target,
-         VYo_terms = VYo_terms, thetaNT_o = thetaNT_o, thetaT_o = thetaT_o, Yo_Yp_o = Yo_Yp_o)
+    diffTraitOffspring_DisEq(parent, delta_o = delta_o, a_o = a_o, VY_o_target = target)
 }

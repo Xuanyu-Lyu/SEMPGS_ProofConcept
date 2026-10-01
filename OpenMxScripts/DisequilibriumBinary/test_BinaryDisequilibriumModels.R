@@ -136,7 +136,7 @@ truth_thresh_parent  <- c(thresh_Yp11 = thresh_parent, thresh_Yo11 = thresh_offs
 results <- list()
 
 ## ---------------- 1. SameTrait Observed ----------------
-CM_st <- build7x7(dq$VY, dq$VY, dq$Yp_Ym, dq$Yo_Yp, dq$Omega, dq$Yp_PGSm,
+CM_st <- build7x7(dq$VY, dq$VY_off, dq$Yp_Ym, dq$Yo_Yp, dq$Omega, dq$Yp_PGSm,
                   dq$thetaT, dq$thetaNT, k, dq$gc, dq$gt)
 truth_st <- c(VE11 = dq$VE, delta11 = dq$delta, a11 = dq$a,
               Omega11 = dq$Omega, Gamma11 = dq$Gamma, mu11 = dq$mu, f11 = f, truth_thresh_same)
@@ -147,7 +147,7 @@ results$SameTrait_Observed <- runModelTest("DisEq_Binary_SameTrait_ObservedYPYM"
 
 ## ---------------- 2. SameTrait Latent (RDR for a) ----------------
 h2_RDR_st <- (2*dq$a^2*j + 2*dq$delta^2*k) * (2*dq$a^2*j + 2*dq$delta^2*k + dq$VE) / dq$VY
-CM_stl <- build5x5(dq$VY, dq$thetaT, dq$thetaNT, k, dq$gc, dq$gt)
+CM_stl <- build5x5(dq$VY_off, dq$thetaT, dq$thetaNT, k, dq$gc, dq$gt)
 truth_stl <- c(truth_st[setdiff(names(truth_st), names(truth_thresh_same))], c(thresh_Yo11 = thresh_same))
 results$SameTrait_Latent <- runModelTest("DisEq_Binary_SameTrait_LatentYPYM", CM_stl,
     list(Yo1 = thresh_same),

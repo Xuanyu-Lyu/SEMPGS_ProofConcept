@@ -107,7 +107,7 @@ means5 <- setNames(rep(0, 5), c("meanYo1","meanTp1","meanNTp1","meanTm1","meanNT
 results <- list()
 
 ## ---------------- 1. SameTrait Observed ----------------
-CM_st <- build7x7(dq$VY, dq$VY, dq$Yp_Ym, dq$Yo_Yp, dq$Omega, dq$Yp_PGSm,
+CM_st <- build7x7(dq$VY, dq$VY_off, dq$Yp_Ym, dq$Yo_Yp, dq$Omega, dq$Yp_PGSm,
                   dq$thetaT, dq$thetaNT, k, dq$gc, dq$gt)
 truth_st <- c(VY11 = dq$VY, VE11 = VE_p, delta11 = delta_p, a11 = a_p,
               Omega11 = dq$Omega, Gamma11 = dq$Gamma, mu11 = dq$mu, f11 = f, means7)
@@ -117,19 +117,20 @@ results$SameTrait_Observed <- runModelTest("DisEq_SameTrait_ObservedYPYM", CM_st
 
 ## ---------------- 2. SameTrait Latent (RDR for a) ----------------
 h2_RDR_st <- (2*a_p^2*j + 2*delta_p^2*k) * (2*a_p^2*j + 2*delta_p^2*k + VE_p) / dq$VY
-CM_stl <- build5x5(dq$VY, dq$thetaT, dq$thetaNT, k, dq$gc, dq$gt)
+CM_stl <- build5x5(dq$VY_off, dq$thetaT, dq$thetaNT, k, dq$gc, dq$gt)
 truth_stl <- c(truth_st[setdiff(names(truth_st), names(means7))], means5)
 results$SameTrait_Latent <- runModelTest("DisEq_SameTrait_LatentYPYM", CM_stl,
     function(tsv) fitUniSEMPGS_DisEq_SameTrait_LatentParents(tsv, h2_RDR = h2_RDR_st, extraTries = extraTries),
     truth_stl)
 
 ## ---------------- offspring-trait quantities for the DiffTrait conditions ----------------
-# disequilibrium diff-trait formulas (same algebra as the DisEq fitting scripts)
-VYo_terms <- 2*delta_o^2*k + 2*a_o^2*j + 2*delta_o*dq$w + 2*a_o*dq$v + 2*f^2*dq$VY
-thetaNT_o <- a_o*dq$itlo + a_o*dq$itol + 2*delta_o*dq$gt + dq$w
-thetaT_o  <- 2*delta_o*k + thetaNT_o
-Yo_Yp_o   <- delta_o*dq$Omega + a_o*dq$Gamma + f*dq$VY +
-             (delta_o*dq$Omega + a_o*dq$Gamma)*dq$mu*dq$VY
+# disequilibrium DiffTrait offspring quantities (same algebra as the DisEq fitting scripts): the offspring
+# trait's own variance, per-haplotype thetas with the offspring's w_o, and Yo_Yp including f*mu*VY^2
+off_obs   <- diffTraitOffspring_DisEq(dq, delta_o = delta_o, a_o = a_o, VE_o = VE_o_obs)
+VYo_terms <- off_obs$VYo_terms
+thetaNT_o <- off_obs$thetaNT_o
+thetaT_o  <- off_obs$thetaT_o
+Yo_Yp_o   <- off_obs$Yo_Yp_o
 h2_p <- (2*a_p^2*j + 2*delta_p^2*k) * (2*a_p^2*j + 2*delta_p^2*k + VE_p) / dq$VY
 
 ## ---------------- 3. DiffTrait Latent (VY_o constrained equal to VY_p) ----------------
