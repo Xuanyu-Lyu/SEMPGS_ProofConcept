@@ -1,10 +1,25 @@
-## Binary/liability-threshold version of UniSEMPGS_SameTrait_ObservedYPYM.R: parent and offspring
-## express the SAME binary trait (liability-threshold model) and the parental phenotypes are
-## observed. Yp1/Ym1/Yo1 are dichotomous (0/1); Tp1/NTp1/Tm1/NTm1 (the transmitted / non-transmitted
-## PGS) stay continuous. Identification of the liability scale follows the standard
-## liability-threshold convention: total liability variance VY is fixed to 1 (not estimated), and
-## Yp1/Ym1/Yo1 each get their own free threshold. Optional covariates (covars) enter as definition variables on the PGS
-## means and on the thresholds, as in r2_omx_partial().
+## Univariate SEM-PGS model: the same trait in parents and offspring, parental phenotypes observed.
+## Equilibrium: assortative mating and vertical transmission have gone on for many generations.
+## Binary trait: fit as a liability-threshold model with the liability variance fixed at 1.
+##
+## Estimates (returned by summary(fit, verbose = TRUE)):
+##   delta, a    effects of the haplotypic PGS and of the latent genetic score on the phenotype
+##   f           vertical transmission from each parent's phenotype to the offspring's environment F
+##   mu          assortative-mating copath, cov(Yp, Ym) = mu*VY^2
+##   VE          residual variance
+##   thresholds  liability thresholds (thresh_Yp, thresh_Ym, thresh_Yo)
+##   plus Omega, Gamma, gt, gc, ht, hc, ic, w, v: covariance terms held to their model values by constraints.
+##
+## Input:
+##   data_path   text file with a header row (read by data.table::fread) and the columns
+##                 Yp1, Ym1    father's and mother's phenotype (0/1)
+##                 Yo1         offspring phenotype (0/1)
+##                 Tp1, NTp1   father's transmitted and non-transmitted haplotypic PGS
+##                 Tm1, NTm1   mother's transmitted and non-transmitted haplotypic PGS
+##               Other columns (e.g. covariates) may be present.
+##               Each haplotypic PGS is assumed to have variance k = .5 in the base population.
+##   covars      optional names of covariate columns; they shift the PGS means and the thresholds
+##   feaTol, optTol, extraTries, exhaustive, jitterMean, jitterVar  optimizer settings (NPSOL, mxTryHard)
 
 fitUniSEMPGS_Binary_SameTrait_ObservedYPYM <- function(data_path, covars = NULL, feaTol = 1e-6, optTol = 1e-8, jitterMean = .2, jitterVar = .05, extraTries = 30, exhaustive = F){
     library(OpenMx)

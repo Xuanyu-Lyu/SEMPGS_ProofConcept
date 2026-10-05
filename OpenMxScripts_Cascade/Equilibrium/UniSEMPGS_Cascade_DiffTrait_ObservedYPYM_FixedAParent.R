@@ -1,14 +1,30 @@
-## SEM-PGS CASCADE version of OpenMxScripts/Equilibrium/UniSEMPGS_DiffTrait_ ObservedYPYM_FixedAParent.R: the same model, except that spouses
-## assort on the latent mating phenotype gamma~ = delta~*(T+NT) + a~*(LT+LNT) + 1~*F + 1~*E instead of on Y
-## (SEM_PGS_Cascade_model.pdf, Part III). Following the ETFD Cascade MVN scripts, each path into
-## gamma~ is the path into Y times a multiplier: AM_G on the genetic paths (delta~ = AM_G*delta, a~ = AM_G*a)
-## and AM_E on the non-genetic paths (the PDF's 1~ on F and E). AM_G = AM_E = 1: primary phenotypic AM;
-## AM_E = 0: genetic homogamy; AM_G = 0: social homogamy. gamma~ has no scale of its own, so at least one
-## multiplier must be fixed (default AM_E = 1, the analogue of the MVN script's fixed AM_U); mu is the
-## copath between spouses' gamma~. By default AM_G is estimated; for genetic homogamy fix AM_G = 1 and free AM_E instead.
+## Univariate SEM-PGS Cascade model: different traits in parents and offspring, parental phenotypes observed.
+## The parental trait drives assortative mating and vertical transmission; the offspring trait is the outcome.
+## RDR heritability identifies the latent genetic effect of both traits (a_p and a_o).
+## Equilibrium: assortative mating and vertical transmission have gone on for many generations.
+## Spouses assort on a latent mating phenotype gamma~ = AM_G*(delta*(T + NT) + a*(LT + LNT)) + AM_E*(F + E).
 ##
-## This script is a function that fits a version univariate SEM-PGS where parent and offspring have different traits and the parental phenotypes are observed 
-## To identify this model, the optimal solution is to use RDR to find  'a' for offspring and use both RDR for parental 'a' and the rest of info to estimate 'a' for parents.
+## Estimates (returned by summary(fit, verbose = TRUE)):
+##   delta_p, a_p, delta_o, a_o  PGS and latent-genetic-score effects on the parental / offspring trait
+##   f                           vertical transmission from each parent's phenotype to the offspring's environment F
+##   mu                          copath between spouses' mating phenotypes gamma~
+##   AM_G, AM_E                  mating-mechanism multipliers, when freed (AMGenMulti, AMEnvMulti)
+##   VY_p, VY_o, VE_p, VE_o      phenotypic and residual variances of the parental and offspring trait
+##   plus Omega_p, Gamma_p, gc, hc, ic, w, v, VF: covariance terms held to their model values by constraints.
+##
+## Input:
+##   data_path   text file with a header row (read by data.table::fread) and the columns
+##                 Yp1, Ym1    father's and mother's phenotype on the parental trait
+##                 Yo1         offspring phenotype on the offspring trait
+##                 Tp1, NTp1   father's transmitted and non-transmitted haplotypic PGS
+##                 Tm1, NTm1   mother's transmitted and non-transmitted haplotypic PGS
+##               The file must hold exactly these seven columns, in the order Yp1, Ym1, Yo1, Tp1, NTp1, Tm1, NTm1.
+##               Each haplotypic PGS is assumed to have variance k = .5 in the base population.
+##   h2_RDR_parent, h2_RDR_offspring  RDR heritability of the parental and of the offspring trait; identify a_p, a_o
+##   AM_G_value, AM_G_free, AM_E_value, AM_E_free  multipliers on the genetic (AM_G) and the F + E (AM_E) paths into
+##               gamma~: (1, 1) primary phenotypic AM, (1, 0) genetic homogamy, (0, 1) social homogamy. At least one
+##               must be fixed. Default: AM_E fixed at 1, AM_G estimated (for genetic homogamy fix AM_G = 1, free AM_E).
+##   feaTol, optTol, extraTries, exhaustive, jitterMean, jitterVar  optimizer settings (NPSOL, mxTryHard)
 
 fitUniSEMPGS_Cascade_DiffTrait_ObservedYPYM_FixedAParent <- function(data_path, h2_RDR_parent, h2_RDR_offspring, AM_G_value = .5, AM_G_free = TRUE, AM_E_value = 1, AM_E_free = FALSE, feaTol = 1e-6, optTol = 1e-8, jitterMean = .5, jitterVar = .1, extraTries = 30, exhaustive = F){
     library(OpenMx)

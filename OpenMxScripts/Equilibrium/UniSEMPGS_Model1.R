@@ -1,12 +1,23 @@
-## This script is a function that fits Model 1 of Balbona, Kim & Keller (2021, Behav Genet 51:264-278): univariate
-## SEM-PGS with vertical transmission and primary phenotypic assortative mating at equilibrium, where the PGS is
-## assumed to explain ALL of the trait's heritability (no latent genetic score: a = 0, so no j, Gamma, v, h, i and no
-## RDR constraint). Only the offspring phenotype and the four parental haplotypic PGS are used; the parental
-## phenotypes are latent. It is the a = 0 special case of UniSEMPGS_SameTrait_LatentYPYM.R (paper eqs 11-17;
-## reference: perform_SEM_model1_eq() in ReferenceCode/VT_SEM_functions.R).
-## Estimates are unbiased only to the degree that the PGS captures the heritability. When it does not and there is AM,
-## the PGS-LGS covariance inflates thetaNT and so VF and w (paper, Model 2); use the LatentYPYM scripts in that case.
-## Without AM the estimates of f and VF are unbiased whatever the PGS r2 (paper eq 6).
+## Model 1 of Balbona, Kim & Keller (2021), as a univariate SEM-PGS model.
+## The PGS is assumed to capture all of the trait's heritability (no latent genetic score); only the offspring
+## phenotype and the parents' PGS are observed.
+## Equilibrium: assortative mating and vertical transmission have gone on for many generations.
+##
+## Estimates (returned by summary(fit, verbose = TRUE)):
+##   delta       effect of the haplotypic PGS on the phenotype
+##   f           vertical transmission from each parent's phenotype to the offspring's environment F
+##   mu          assortative-mating copath, cov(Yp, Ym) = mu*VY^2
+##   VY, VE      phenotypic and residual variance
+##   plus Omega, gt, gc, w: covariance terms held to their model values by constraints.
+##
+## Input:
+##   data_path   text file with a header row (read by data.table::fread) and the columns
+##                 Yo1         offspring phenotype
+##                 Tp1, NTp1   father's transmitted and non-transmitted haplotypic PGS
+##                 Tm1, NTm1   mother's transmitted and non-transmitted haplotypic PGS
+##               The file should hold only these columns.
+##               Each haplotypic PGS is assumed to have variance k = .5 in the base population.
+##   feaTol, optTol, extraTries, exhaustive, jitterMean, jitterVar  optimizer settings (NPSOL, mxTryHard)
 
 fitUniSEMPGS_Model1 <- function(data_path, feaTol = 1e-6, optTol = 1e-8, jitterMean = .5, jitterVar = .1, extraTries = 30, exhaustive = F){
     library(OpenMx)

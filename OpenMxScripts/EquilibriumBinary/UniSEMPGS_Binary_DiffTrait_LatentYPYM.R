@@ -1,21 +1,28 @@
-## Binary/liability-threshold version of UniSEMPGS_DiffTrait_ LatentYPYM.R: parent and offspring
-## express DIFFERENT traits, and the parental phenotypes are fully latent (not in the data), so
-## only the offspring's binary trait Yo1 is observed. RDR identifies both generations' 'a', and
-## the (single, shared) liability variance VY is fixed to 1 for both generations -- i.e. the
-## parental trait's own liability AND the offspring trait's liability are both standardized to the
-## SAME scale, exactly like the continuous version equates their phenotypic variances.
-## Optional covariates (covars) enter as definition variables on the PGS
-## means and on the threshold, as in r2_omx_partial().
+## Univariate SEM-PGS model: different traits in parents and offspring, parental phenotypes not observed.
+## The parental trait drives assortative mating and vertical transmission; the offspring trait is the outcome.
+## Equilibrium: assortative mating and vertical transmission have gone on for many generations.
+## Binary trait: fit as a liability-threshold model with both traits' liability variances fixed at 1.
 ##
-## IDENTIFICATION NOTE: with both traits fully latent on the parent side, the 5-variable data
-## (Yo1, Tp1, NTp1, Tm1, NTm1) supply only 4 independent moments, one fewer than this model's free
-## dimensions even after both RDR constraints. Concretely, the gt(=gc) moment only pins down the
-## PRODUCT Omega_p^2*mu, not Omega_p and mu individually -- fixing an unrelated parameter (e.g.
-## 'f') does NOT resolve this (confirmed empirically in the continuous version: fixing f converges
-## cleanly to a confidently WRONG point, not merely a noisy one). Passing an externally-known
-## `mu_fixed` breaks exactly that degeneracy and makes the model point-identified -- see
-## Equilibrium/UniSEMPGS_DiffTrait_ LatentYPYM.R and ConceptProof.md. Leaving it NULL reproduces
-## the original (under-identified) behavior.
+## Estimates (returned by summary(fit, verbose = TRUE)):
+##   delta_p, a_p, delta_o, a_o  PGS and latent-genetic-score effects on the parental / offspring trait
+##   f                           vertical transmission from each parent's phenotype to the offspring's environment F
+##   mu                          assortative-mating copath, cov(Yp, Ym) = mu*VY^2; fixed at mu_fixed (estimated if NULL)
+##   VE_p, VE_o                  residual variances of the parental and offspring trait
+##   thresholds                  liability thresholds (thresh_Yo)
+##   plus Omega_p, Gamma_p, gc, hc, ic, w, v: covariance terms held to their model values by constraints.
+##
+## Input:
+##   data_path   text file with a header row (read by data.table::fread) and the columns
+##                 Yo1         offspring phenotype on the offspring trait (0/1)
+##                 Tp1, NTp1   father's transmitted and non-transmitted haplotypic PGS
+##                 Tm1, NTm1   mother's transmitted and non-transmitted haplotypic PGS
+##               Other columns (e.g. covariates) may be present.
+##               Each haplotypic PGS is assumed to have variance k = .5 in the base population.
+##   h2_RDR_parent, h2_RDR_offspring  RDR heritability of the parental and of the offspring trait; identify a_p, a_o
+##   mu_fixed    known assortative-mating copath of the parental trait. Needed for identification: with NULL, mu is
+##               estimated, but the model is under-identified and can converge to a wrong point.
+##   covars      optional names of covariate columns; they shift the PGS means and the thresholds
+##   feaTol, optTol, extraTries, exhaustive, jitterMean, jitterVar  optimizer settings (NPSOL, mxTryHard)
 
 fitUniSEMPGS_Binary_DiffTrait_LatentYPYM <- function(data_path, h2_RDR_parent, h2_RDR_offspring, mu_fixed = NULL, covars = NULL, feaTol = 1e-6, optTol = 1e-8, jitterMean = .2, jitterVar = .05, extraTries = 30, exhaustive = F){
     library(OpenMx)
@@ -62,7 +69,7 @@ fitUniSEMPGS_Binary_DiffTrait_LatentYPYM <- function(data_path, h2_RDR_parent, h
     Omega_p <- mxMatrix(type="Full", nrow=1, ncol=1, free=T, values=.15, label="Omega_p11", name="Omega_p", lbound = .001)
     Gamma_p <- mxMatrix(type="Full", nrow=1, ncol=1, free=T, values=.15, label="Gamma_p11", name="Gamma_p")
 
-    # 'mu' is free unless an external value is supplied via mu_fixed (see IDENTIFICATION NOTE above).
+    # 'mu' is free unless an external value is supplied via mu_fixed (see mu_fixed in the header).
     mu <- mxMatrix(type="Full", nrow=1, ncol=1, free=is.null(mu_fixed),
                    values=if (is.null(mu_fixed)) .1 else mu_fixed, label="mu11", name="mu")
     ic <- mxMatrix(type="Full", nrow=1, ncol=1, free=T, values=.02, label="ic11", name="ic")

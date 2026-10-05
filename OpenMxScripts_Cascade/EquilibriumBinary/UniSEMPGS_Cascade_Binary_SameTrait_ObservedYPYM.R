@@ -1,19 +1,30 @@
-## SEM-PGS CASCADE version of OpenMxScripts/EquilibriumBinary/UniSEMPGS_Binary_SameTrait_ObservedYPYM.R: the same model, except that spouses
-## assort on the latent mating phenotype gamma~ = delta~*(T+NT) + a~*(LT+LNT) + 1~*F + 1~*E instead of on Y
-## (SEM_PGS_Cascade_model.pdf, Part III). Following the ETFD Cascade MVN scripts, each path into
-## gamma~ is the path into Y times a multiplier: AM_G on the genetic paths (delta~ = AM_G*delta, a~ = AM_G*a)
-## and AM_E on the non-genetic paths (the PDF's 1~ on F and E). AM_G = AM_E = 1: primary phenotypic AM;
-## AM_E = 0: genetic homogamy; AM_G = 0: social homogamy. gamma~ has no scale of its own, so at least one
-## multiplier must be fixed (default AM_E = 1, the analogue of the MVN script's fixed AM_U); mu is the
-## copath between spouses' gamma~. By default AM_G is estimated; for genetic homogamy fix AM_G = 1 and free AM_E instead.
+## Univariate SEM-PGS Cascade model: the same trait in parents and offspring, parental phenotypes observed.
+## Equilibrium: assortative mating and vertical transmission have gone on for many generations.
+## Spouses assort on a latent mating phenotype gamma~ = AM_G*(delta*(T + NT) + a*(LT + LNT)) + AM_E*(F + E).
+## Binary trait: fit as a liability-threshold model with the liability variance fixed at 1.
 ##
-## Binary/liability-threshold version of UniSEMPGS_SameTrait_ObservedYPYM.R: parent and offspring
-## express the SAME binary trait (liability-threshold model) and the parental phenotypes are
-## observed. Yp1/Ym1/Yo1 are dichotomous (0/1); Tp1/NTp1/Tm1/NTm1 (the transmitted / non-transmitted
-## PGS) stay continuous. Identification of the liability scale follows the standard
-## liability-threshold convention: total liability variance VY is fixed to 1 (not estimated), and
-## Yp1/Ym1/Yo1 each get their own free threshold. Optional covariates (covars) enter as definition variables on the PGS
-## means and on the thresholds, as in r2_omx_partial().
+## Estimates (returned by summary(fit, verbose = TRUE)):
+##   delta, a    effects of the haplotypic PGS and of the latent genetic score on the phenotype
+##   f           vertical transmission from each parent's phenotype to the offspring's environment F
+##   mu          copath between spouses' mating phenotypes gamma~
+##   AM_G, AM_E  mating-mechanism multipliers, when freed (AMGenMulti, AMEnvMulti)
+##   VE          residual variance
+##   thresholds  liability thresholds (thresh_Yp, thresh_Ym, thresh_Yo)
+##   plus Omega, Gamma, gt, gc, ht, hc, ic, w, v, VF: covariance terms held to their model values by constraints.
+##
+## Input:
+##   data_path   text file with a header row (read by data.table::fread) and the columns
+##                 Yp1, Ym1    father's and mother's phenotype (0/1)
+##                 Yo1         offspring phenotype (0/1)
+##                 Tp1, NTp1   father's transmitted and non-transmitted haplotypic PGS
+##                 Tm1, NTm1   mother's transmitted and non-transmitted haplotypic PGS
+##               Other columns (e.g. covariates) may be present.
+##               Each haplotypic PGS is assumed to have variance k = .5 in the base population.
+##   covars      optional names of covariate columns; they shift the PGS means and the thresholds
+##   AM_G_value, AM_G_free, AM_E_value, AM_E_free  multipliers on the genetic (AM_G) and the F + E (AM_E) paths into
+##               gamma~: (1, 1) primary phenotypic AM, (1, 0) genetic homogamy, (0, 1) social homogamy. At least one
+##               must be fixed. Default: AM_E fixed at 1, AM_G estimated (for genetic homogamy fix AM_G = 1, free AM_E).
+##   feaTol, optTol, extraTries, exhaustive, jitterMean, jitterVar  optimizer settings (NPSOL, mxTryHard)
 
 fitUniSEMPGS_Cascade_Binary_SameTrait_ObservedYPYM <- function(data_path, covars = NULL, AM_G_value = .5, AM_G_free = TRUE, AM_E_value = 1, AM_E_free = FALSE, feaTol = 1e-6, optTol = 1e-8, jitterMean = .2, jitterVar = .05, extraTries = 30, exhaustive = F){
     library(OpenMx)

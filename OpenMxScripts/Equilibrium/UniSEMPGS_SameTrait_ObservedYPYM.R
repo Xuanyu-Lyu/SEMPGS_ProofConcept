@@ -1,4 +1,22 @@
-## This script is a function that fits a version univariate SEM-PGS where parent and offspring have the same trait and the parental phenotypes are observed.
+## Univariate SEM-PGS model: the same trait in parents and offspring, parental phenotypes observed.
+## Equilibrium: assortative mating and vertical transmission have gone on for many generations.
+##
+## Estimates (returned by summary(fit, verbose = TRUE)):
+##   delta, a    effects of the haplotypic PGS and of the latent genetic score on the phenotype
+##   f           vertical transmission from each parent's phenotype to the offspring's environment F
+##   mu          assortative-mating copath, cov(Yp, Ym) = mu*VY^2
+##   VY, VE      phenotypic and residual variance
+##   plus Omega, Gamma, gt, gc, ht, hc, ic, w, v: covariance terms held to their model values by constraints.
+##
+## Input:
+##   data_path   text file with a header row (read by data.table::fread) and the columns
+##                 Yp1, Ym1    father's and mother's phenotype
+##                 Yo1         offspring phenotype
+##                 Tp1, NTp1   father's transmitted and non-transmitted haplotypic PGS
+##                 Tm1, NTm1   mother's transmitted and non-transmitted haplotypic PGS
+##               The file should hold only these columns.
+##               Each haplotypic PGS is assumed to have variance k = .5 in the base population.
+##   feaTol, optTol, extraTries, exhaustive, jitterMean, jitterVar  optimizer settings (NPSOL, mxTryHard)
 
 fitUniSEMPGS_SameTrait_ObservedYPYM <- function(data_path, feaTol = 1e-6, optTol = 1e-8, jitterMean = .5, jitterVar = .1, extraTries = 30, exhaustive = F){
     library(OpenMx)

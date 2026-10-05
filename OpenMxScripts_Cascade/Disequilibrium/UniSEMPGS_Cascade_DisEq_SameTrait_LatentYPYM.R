@@ -1,21 +1,27 @@
-## SEM-PGS CASCADE version of OpenMxScripts/Disequilibrium/UniSEMPGS_DisEq_SameTrait_LatentYPYM.R: the same model, except that spouses
-## assort on the latent mating phenotype gamma~ = delta~*(T+NT) + a~*(LT+LNT) + 1~*F + 1~*E instead of on Y
-## (SEM_PGS_Cascade_model.pdf, Part IV). Following the ETFD Cascade MVN scripts, each path into
-## gamma~ is the path into Y times a multiplier: AM_G on the genetic paths (delta~ = AM_G*delta, a~ = AM_G*a)
-## and AM_E on the non-genetic paths (the PDF's 1~ on F and E). AM_G = AM_E = 1: primary phenotypic AM;
-## AM_E = 0: genetic homogamy; AM_G = 0: social homogamy. gamma~ has no scale of its own, so at least one
-## multiplier must be fixed (default AM_E = 1, the analogue of the MVN script's fixed AM_U); mu is the
-## copath between spouses' gamma~. Both multipliers are fixed by default: with latent parental phenotypes the
-## mating mechanism is not identified, so it must be supplied (the hypothesized mechanism under test).
-## Offspring side, derived from Yo = delta*(Tp+Tm) + a*(LTp+LTm) + Fo + Eo (see ../PDF_Errata.md): the offspring's
-## haplotypes covary across parents (gt, ht, ic), their F comes from AM-mated parents (w_o, v_o, VF_o carry the
-## tau*mu terms), they have their own phenotypic variance VY_o, and thetaT/thetaNT are per single-haplotype
-## column (the papers' theta is the sum over the father's and the mother's haplotype). Yo_Yp follows PDF
-## Part IV Section 19 (it includes f*tau^2*mu = f*cov(Ym, Yp), which the original DisEq Yo_Yp omits).
+## Univariate SEM-PGS Cascade model: the same trait in parents and offspring, parental phenotypes not observed.
+## Disequilibrium: vertical transmission is at equilibrium; the parents are the first assortatively mated generation.
+## Spouses assort on a latent mating phenotype gamma~ = AM_G*(delta*(T + NT) + a*(LT + LNT)) + AM_E*(F + E).
 ##
-## This script is a function that fits a version univariate SEM-PGS where parent and offspring have the same trait but the parental phenotypes are latent.
-## This script is for trait that is not in equilibrium
-## To identify this model, the optimal solution is to use RDR to find a for both parents and offspring.
+## Estimates (returned by summary(fit, verbose = TRUE)):
+##   delta, a    effects of the haplotypic PGS and of the latent genetic score on the phenotype
+##   f           vertical transmission from each parent's phenotype to the offspring's environment F
+##   mu          copath between spouses' mating phenotypes gamma~
+##   VY, VE      the parents' phenotypic variance and the residual variance
+##   plus Omega, Gamma: covariance terms held to their model values by constraints.
+##
+## Input:
+##   data_path   text file with a header row (read by data.table::fread) and the columns
+##                 Yo1         offspring phenotype
+##                 Tp1, NTp1   father's transmitted and non-transmitted haplotypic PGS
+##                 Tm1, NTm1   mother's transmitted and non-transmitted haplotypic PGS
+##               The file should hold only these columns.
+##               Each haplotypic PGS is assumed to have variance k = .5 in the base population.
+##   h2_RDR      heritability estimated by RDR (relatedness disequilibrium regression); identifies a
+##   AM_G_value, AM_G_free, AM_E_value, AM_E_free  multipliers on the genetic (AM_G) and the F + E (AM_E) paths into
+##               gamma~: (1, 1) primary phenotypic AM, (1, 0) genetic homogamy, (0, 1) social homogamy. At least one
+##               must be fixed. Default: both fixed at 1. With latent parents the mechanism is not identified, so
+##               fix both at the mechanism to be tested.
+##   feaTol, optTol, extraTries, exhaustive, jitterMean, jitterVar  optimizer settings (NPSOL, mxTryHard)
 
 fitUniSEMPGS_Cascade_DisEq_SameTrait_LatentParents <- function(data_path, h2_RDR, AM_G_value = 1, AM_G_free = FALSE, AM_E_value = 1, AM_E_free = FALSE, feaTol = 1e-6, optTol = 1e-8, jitterMean = .5, jitterVar = .1, extraTries = 30, exhaustive = F){
     library(OpenMx)

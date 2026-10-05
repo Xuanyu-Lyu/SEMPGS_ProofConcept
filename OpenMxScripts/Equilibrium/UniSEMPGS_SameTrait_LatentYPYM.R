@@ -1,5 +1,22 @@
-## This script is a function that fits a version univariate SEM-PGS where parent and offspring have the same trait but the parental phenotypes are latent. 
-## To identify this model, the optimal solution is to use RDR to find a for both parents and offspring. 
+## Univariate SEM-PGS model: the same trait in parents and offspring, parental phenotypes not observed.
+## Equilibrium: assortative mating and vertical transmission have gone on for many generations.
+##
+## Estimates (returned by summary(fit, verbose = TRUE)):
+##   delta, a    effects of the haplotypic PGS and of the latent genetic score on the phenotype
+##   f           vertical transmission from each parent's phenotype to the offspring's environment F
+##   mu          assortative-mating copath, cov(Yp, Ym) = mu*VY^2
+##   VY, VE      phenotypic and residual variance
+##   plus Omega, Gamma, gt, gc, ht, hc, ic, w, v: covariance terms held to their model values by constraints.
+##
+## Input:
+##   data_path   text file with a header row (read by data.table::fread) and the columns
+##                 Yo1         offspring phenotype
+##                 Tp1, NTp1   father's transmitted and non-transmitted haplotypic PGS
+##                 Tm1, NTm1   mother's transmitted and non-transmitted haplotypic PGS
+##               The file should hold only these columns.
+##               Each haplotypic PGS is assumed to have variance k = .5 in the base population.
+##   h2_RDR      heritability estimated by RDR (relatedness disequilibrium regression); identifies a
+##   feaTol, optTol, extraTries, exhaustive, jitterMean, jitterVar  optimizer settings (NPSOL, mxTryHard)
 
 fitUniSEMPGS_SameTrait_LatentParents <- function(data_path, h2_RDR, feaTol = 1e-6, optTol = 1e-8, jitterMean = .5, jitterVar = .1, extraTries = 30, exhaustive = F){
     library(OpenMx)

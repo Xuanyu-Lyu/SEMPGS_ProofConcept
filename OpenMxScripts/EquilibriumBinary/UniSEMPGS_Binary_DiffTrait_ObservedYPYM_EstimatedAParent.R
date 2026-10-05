@@ -1,9 +1,28 @@
-## Binary/liability-threshold version of UniSEMPGS_DiffTrait_ ObservedYPYM_EstiatedAParent.R:
-## parent and offspring express DIFFERENT binary traits, and the parental phenotypes ARE observed.
-## Yp1, Ym1 and Yo1 each get their own free threshold. RDR identifies the offspring's 'a'; the
-## parental 'a' is estimated from the observed parental data. Optional covariates (covars) enter as definition variables on the PGS
-## means and on the thresholds, as in r2_omx_partial().
-## Each trait's liability variance (VY_p, VY_o) is independently fixed to 1.
+## Univariate SEM-PGS model: different traits in parents and offspring, parental phenotypes observed.
+## The parental trait drives assortative mating and vertical transmission; the offspring trait is the outcome.
+## The parents' latent genetic effect a_p is estimated from the parental phenotypes.
+## Equilibrium: assortative mating and vertical transmission have gone on for many generations.
+## Binary trait: fit as a liability-threshold model with both traits' liability variances fixed at 1.
+##
+## Estimates (returned by summary(fit, verbose = TRUE)):
+##   delta_p, a_p, delta_o, a_o  PGS and latent-genetic-score effects on the parental / offspring trait
+##   f                           vertical transmission from each parent's phenotype to the offspring's environment F
+##   mu                          assortative-mating copath, cov(Yp, Ym) = mu*VY^2
+##   VE_p, VE_o                  residual variances of the parental and offspring trait
+##   thresholds                  liability thresholds (thresh_Yp, thresh_Ym, thresh_Yo)
+##   plus Omega_p, Gamma_p, gc, hc, ic, w, v: covariance terms held to their model values by constraints.
+##
+## Input:
+##   data_path   text file with a header row (read by data.table::fread) and the columns
+##                 Yp1, Ym1    father's and mother's phenotype on the parental trait (0/1)
+##                 Yo1         offspring phenotype on the offspring trait (0/1)
+##                 Tp1, NTp1   father's transmitted and non-transmitted haplotypic PGS
+##                 Tm1, NTm1   mother's transmitted and non-transmitted haplotypic PGS
+##               Other columns (e.g. covariates) may be present.
+##               Each haplotypic PGS is assumed to have variance k = .5 in the base population.
+##   h2_RDR_offspring  RDR heritability of the offspring trait; identifies a_o
+##   covars      optional names of covariate columns; they shift the PGS means and the thresholds
+##   feaTol, optTol, extraTries, exhaustive, jitterMean, jitterVar  optimizer settings (NPSOL, mxTryHard)
 
 fitUniSEMPGS_Binary_DiffTrait_ObservedYPYM_EstimatedAParent <- function(data_path, h2_RDR_offspring, covars = NULL, feaTol = 1e-6, optTol = 1e-8, jitterMean = .2, jitterVar = .05, extraTries = 30, exhaustive = F){
     library(OpenMx)

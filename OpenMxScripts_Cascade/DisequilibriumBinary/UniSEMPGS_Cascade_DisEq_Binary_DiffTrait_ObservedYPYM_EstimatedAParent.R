@@ -1,24 +1,33 @@
-## SEM-PGS CASCADE version of OpenMxScripts/DisequilibriumBinary/UniSEMPGS_DisEq_Binary_DiffTrait_ObservedYPYM_EstimatedAParent.R: the same model, except that spouses
-## assort on the latent mating phenotype gamma~ = delta~*(T+NT) + a~*(LT+LNT) + 1~*F + 1~*E instead of on Y
-## (SEM_PGS_Cascade_model.pdf, Part IV). Following the ETFD Cascade MVN scripts, each path into
-## gamma~ is the path into Y times a multiplier: AM_G on the genetic paths (delta~ = AM_G*delta, a~ = AM_G*a)
-## and AM_E on the non-genetic paths (the PDF's 1~ on F and E). AM_G = AM_E = 1: primary phenotypic AM;
-## AM_E = 0: genetic homogamy; AM_G = 0: social homogamy. gamma~ has no scale of its own, so at least one
-## multiplier must be fixed (default AM_E = 1, the analogue of the MVN script's fixed AM_U); mu is the
-## copath between spouses' gamma~. By default AM_G is estimated; for genetic homogamy fix AM_G = 1 and free AM_E instead.
-## Offspring side, derived from Yo = delta*(Tp+Tm) + a*(LTp+LTm) + Fo + Eo (see ../PDF_Errata.md): the offspring's
-## haplotypes covary across parents (gt, ht, ic), their F comes from AM-mated parents (w_o, v_o, VF_o carry the
-## tau*mu terms), they have their own phenotypic variance VY_o, and thetaT/thetaNT are per single-haplotype
-## column (the papers' theta is the sum over the father's and the mother's haplotype). Yo_Yp follows PDF
-## Part IV Section 19 (it includes f*tau^2*mu = f*cov(Ym, Yp), which the original DisEq Yo_Yp omits).
+## Univariate SEM-PGS Cascade model: different traits in parents and offspring, parental phenotypes observed.
+## The parental trait drives assortative mating and vertical transmission; the offspring trait is the outcome.
+## The parents' latent genetic effect a_p is estimated from the parental phenotypes.
+## Disequilibrium: vertical transmission is at equilibrium; the parents are the first assortatively mated generation.
+## Spouses assort on a latent mating phenotype gamma~ = AM_G*(delta*(T + NT) + a*(LT + LNT)) + AM_E*(F + E).
+## Binary trait: fit as a liability-threshold model with both traits' liability variances fixed at 1.
 ##
-## Binary/liability-threshold version of UniSEMPGS_DisEq_DiffTrait_ObservedYPYM_EstimatedAParent.R:
-## parent and offspring express DIFFERENT binary traits, the parental phenotypes ARE observed, and
-## the trait is NOT in equilibrium (gc = hc = ic = 0, one generation of assortative mating). Yp1, Ym1
-## and Yo1 each get their own free threshold. RDR identifies the offspring's 'a'; the parental 'a' is
-## estimated from the observed parental data. Each trait's liability variance (VY_p, VY_o) is
-## independently fixed to 1. Optional covariates (covars) enter as definition variables on the PGS
-## means and on the thresholds, as in r2_omx_partial().
+## Estimates (returned by summary(fit, verbose = TRUE)):
+##   delta_p, a_p, delta_o, a_o  PGS and latent-genetic-score effects on the parental / offspring trait
+##   f                           vertical transmission from each parent's phenotype to the offspring's environment F
+##   mu                          copath between spouses' mating phenotypes gamma~
+##   AM_G, AM_E                  mating-mechanism multipliers, when freed (AMGenMulti, AMEnvMulti)
+##   VE_p, VE_o                  residual variances of the parental and offspring trait
+##   thresholds                  liability thresholds (thresh_Yp, thresh_Ym, thresh_Yo)
+##   plus Omega_p, Gamma_p: covariance terms held to their model values by constraints.
+##
+## Input:
+##   data_path   text file with a header row (read by data.table::fread) and the columns
+##                 Yp1, Ym1    father's and mother's phenotype on the parental trait (0/1)
+##                 Yo1         offspring phenotype on the offspring trait (0/1)
+##                 Tp1, NTp1   father's transmitted and non-transmitted haplotypic PGS
+##                 Tm1, NTm1   mother's transmitted and non-transmitted haplotypic PGS
+##               Other columns (e.g. covariates) may be present.
+##               Each haplotypic PGS is assumed to have variance k = .5 in the base population.
+##   h2_RDR_offspring  RDR heritability of the offspring trait; identifies a_o
+##   covars      optional names of covariate columns; they shift the PGS means and the thresholds
+##   AM_G_value, AM_G_free, AM_E_value, AM_E_free  multipliers on the genetic (AM_G) and the F + E (AM_E) paths into
+##               gamma~: (1, 1) primary phenotypic AM, (1, 0) genetic homogamy, (0, 1) social homogamy. At least one
+##               must be fixed. Default: AM_E fixed at 1, AM_G estimated (for genetic homogamy fix AM_G = 1, free AM_E).
+##   feaTol, optTol, extraTries, exhaustive, jitterMean, jitterVar  optimizer settings (NPSOL, mxTryHard)
 
 fitUniSEMPGS_Cascade_DisEq_Binary_DiffTrait_ObservedYPYM_EstimatedAParent <- function(data_path, h2_RDR_offspring, covars = NULL, AM_G_value = .5, AM_G_free = TRUE, AM_E_value = 1, AM_E_free = FALSE, feaTol = 1e-6, optTol = 1e-8, jitterMean = .2, jitterVar = .05, extraTries = 30, exhaustive = F){
     library(OpenMx)
