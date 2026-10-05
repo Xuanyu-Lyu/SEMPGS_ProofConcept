@@ -25,6 +25,10 @@ Function names are the originals with `Cascade_` inserted. For example,
 `fitUniSEMPGS_SameTrait_ObservedYPYM` becomes `fitUniSEMPGS_Cascade_SameTrait_ObservedYPYM`. The arguments are
 unchanged, plus four new ones for the mating mechanism (next section).
 
+Each of the four folders also holds a Cascade version of Model 1 from Balbona et al. (2021):
+`UniSEMPGS_Cascade_Model1.R`, `UniSEMPGS_Cascade_DisEq_Model1.R`, `UniSEMPGS_Cascade_Binary_Model1.R` and
+`UniSEMPGS_Cascade_DisEq_Binary_Model1.R`. See [Model 1](#model-1-no-latent-genetic-score).
+
 ## The mating multipliers
 
 Following the ETFD Cascade MVN scripts, every path into γ̃ is the corresponding path into Y times a multiplier:
@@ -92,6 +96,30 @@ original DisEq scripts nor PDF Part IV §18 matched the simulation here.
 The PDF's own generation-2 formulas in §18 (Ω₂, Γ₂, VY₂, θNT₂) count the AM-induced haplotype covariances twice.
 **`PDF_Errata.md`** lists these and the other errors found, with derivations and simulation values.
 
+## Model 1 (no latent genetic score)
+
+The four `*Model1.R` scripts are the Cascade versions of `OpenMxScripts/*/UniSEMPGS_*Model1.R`: Model 1 of
+Balbona et al. (2021), in which the PGS explains all heritability. They are the `SameTrait_LatentYPYM` scripts with
+`a = 0`, so `a, j, Γ, Γ̃, v, h, i` and the RDR constraint drop out. The data are `Yo1, Tp1, NTp1, Tm1, NTm1`, and γ̃
+reduces to δ̃(T + NT) + 1̃·F + 1̃·E:
+
+| Quantity | Equilibrium | Disequilibrium |
+|---|---|---|
+| `Omega_td` | 2δ̃gc + δ̃k + ½·1̃·w | δ̃k + ½·1̃·w |
+| `zeta`, `tau` | δ̃w + 1̃·VF, 2δΩ̃ + ζ + 1̃·VE | same, with VF = 2f²VY |
+| gt | Ω̃µΩ̃ (= gc) | Ω̃µΩ̃ (gc = 0) |
+| w, VF | 2fΩ + 2fτµΩ̃, 2f²VY + 2f²τ²µ | offspring: `w_o`, `VF_o` of the same form |
+| θNT, θT | 2δgc + ½w, δk + θNT | δ·gt + ½w_o, δk + θNT |
+
+As in the latent-parent designs, both multipliers are fixed by default (`AM_G_value = AM_E_value = 1`): with
+latent parents the mating mechanism is not identified and must be supplied. The free structural parameters are
+then δ, f, µ and VE, which the four moments VY_o, θT, θNT and gt just-identify. Under social homogamy gt is tiny
+(Ω̃ = ½w), so µ is weakly identified there, as in the other latent-parent designs (Validation Section 5).
+
+The continuous scripts take their starting values from the sample moments (δ from θT − θNT, Ω from θT, VY from
+var(Yo)), as the original Model 1 scripts do; with fixed starts the default search can stop at a far-off point
+(`OpenMxScripts/ConceptProof.md` §5).
+
 ## Iterative math
 
 * `uniIterativeMath_Cascade()` (Eq) iterates PDF Part III from a random-mating, no-VT generation 0 (the same
@@ -126,6 +154,7 @@ Rscript 05_moment_sensitivity.R                    # which data moments move the
 python 06_replicate_eq_social.py                   # 24 more Eq social-homogamy populations (output/replication)
 Rscript 06_replicate_eq_social.R                   # ... and their fits
 Rscript 07_original_diseq_check.R                  # the corrected ORIGINAL DisEq script on GeneEvolve data
+Rscript 08_model1.R --workers 6                    # the Cascade Model 1 scripts (output/model1)
 jupyter nbconvert --to notebook --execute --inplace 03_results.ipynb
 ```
 
@@ -165,6 +194,17 @@ The notebook ends with a summary of findings. In brief:
     math within 1%.
 * **Original DisEq scripts.** After the same correction, the SameTrait-Observed script is unbiased on the GeneEvolve
   primary-AM populations. Its SEs for a, f, VE and Γ are 2–2.8× too small (`07_original_diseq_check.R`).
+* **Model 1 (`08_model1.R`; not in the notebook).** Truth: BASE with all genetic variance in the PGS (δ² = .5,
+  a = 0), every fit run with the scripts' default search.
+  * All 12 coding-check fits (2 regimes × 3 mechanisms × continuous/binary) recover the truth. The continuous fits
+    are within 1e-3, and the largest binary miss is |z| = 1.9 (Eq genetic homogamy). Across 12 more datasets for
+    that fit, the mean z of every parameter lies between −0.11 and 0.16. Under social homogamy µ has a large SE
+    (.26–.47 continuous), so the binary µ misses of .06 are |z| ≤ 0.3. These two fits exceed the .05 tolerance
+    on µ only.
+  * With AM_G = AM_E = 1 the Cascade scripts reproduce the original Model 1 scripts: same −2LL, estimates within
+    2e-5.
+  * On all six GeneEvolve SameTrait_Latent populations, the default search reaches the exhaustive-search optimum
+    (−2LL within 1e-4). Model 1 is misspecified there (a > 0), so only convergence is checked.
 * **The PDF's errors.** See `PDF_Errata.md`.
 * **Run settings.** Continuous fits use `extraTries = 30, exhaustive = TRUE`; without it they can stop at local
   optima. Binary fits (single-threaded ordinal FIML) use the scripts' default search.

@@ -5,7 +5,8 @@ model designs, each fit under two regimes (**equilibrium**, `Equilibrium/`, vs *
 `Disequilibrium/`) and two trait types (**continuous**, fit as an ordinary phenotype, vs **binary**,
 fit as a liability-threshold trait in `EquilibriumBinary/`/`DisequilibriumBinary/`) — how each model
 is designed and identified, how the parameter-recovery simulations are constructed, and the test
-results.
+results. It also covers four Model 1 functions (Balbona et al. 2021, no latent genetic score) in the same
+four folders (§3).
 
 All models are scalar (univariate) versions of the bivariate SEM-PGS framework: every matrix in the
 bivariate math is treated as a scalar. Fitting is done in OpenMx (NPSOL, raw-data ML, nonlinear
@@ -133,6 +134,34 @@ algebras, and the offspring-trait variance being the offspring's own
 ```
 VY_o = 2*delta_o^2*(k + gt) + 2*a_o^2*(j + ht) + 4*delta_o*a_o*ic + 2*delta_o*w_o + 2*a_o*v_o + VF_o + VE_o
 ```
+
+### Model 1 of Balbona et al. (2021): the PGS explains all heritability
+
+| Regime | Continuous script | Binary script | Reference |
+|---|---|---|---|
+| Equilibrium | `Equilibrium/UniSEMPGS_Model1.R` | `EquilibriumBinary/UniSEMPGS_Binary_Model1.R` | `perform_SEM_model1_eq()` |
+| Disequilibrium | `Disequilibrium/UniSEMPGS_DisEq_Model1.R` | `DisequilibriumBinary/UniSEMPGS_DisEq_Binary_Model1.R` | `perform_SEM_model1_dis()` |
+
+These four scripts are the paper's Model 1 (eqs 11–17): VT and primary phenotypic AM, with no latent genetic score.
+They are the `a = 0` case of the SameTrait_LatentYPYM scripts (#2, #7). `a, j, Gamma, v, h, i` and the RDR constraint
+drop out, so the only free structural parameters are `delta, f, mu, VE`. The data are the 5 variables `Yo1, Tp1,
+NTp1, Tm1, NTm1`. The four independent moments `VY_o, thetaT, thetaNT, gt` make the model just-identified, with
+`k` checked by the PGS variances. Per data column:
+
+```
+Equilibrium:     Omega = delta*k + 2*delta*g + .5*w ;  g = gt = gc = Omega^2*mu ;  w = 2*f*Omega*(1 + mu*VY)
+                 VY = 2*delta*Omega + delta*w + VF + VE ;  VF = 2*f^2*VY*(1 + mu*VY)
+                 thetaNT = 2*delta*g + .5*w ;  thetaT = delta*k + thetaNT
+Disequilibrium:  Omega = delta*k + .5*w with w = 2*f*Omega ;  VY = 2*delta*Omega + delta*w + 2*f^2*VY + VE ;  gc = 0
+                 gt = Omega^2*mu ;  w_o = 2*f*Omega*(1 + mu*VY) ;  VF_o = 2*f^2*VY*(1 + mu*VY)
+                 thetaNT = delta*gt + .5*w_o ;  thetaT = delta*k + thetaNT
+                 VY_o = 2*delta^2*(k + gt) + 2*delta*w_o + VF_o + VE
+```
+
+The estimates are unbiased only to the degree that the PGS captures the heritability. With AM and a partial PGS, the
+PGS–LGS covariance `i` that Model 1 leaves out inflates `thetaNT`, and with it `w` and `VF` (the paper's motivation
+for Model 2). Without AM, `f`, `VF` and `w` are unbiased whatever the PGS r² (paper eq 6). `delta` is unbiased in
+both cases because `thetaT - thetaNT = delta*k`. `test_Model1.R` checks all three statements (§5).
 
 ### Binary variants: liability-threshold identification
 
@@ -294,6 +323,40 @@ a fixed sign across seeds). The `EstimatedAParent` variant is consistently noisi
 a source of estimation noise), so it is the more likely of the two designs to brush up against
 whatever flag tolerance is chosen.
 
+**Model 1 (`test_Model1.R`, Oct 2026).** Generating values `delta = .8, a = 0, VE = .36, f = .15, am = .4`, the
+same .64 base genetic variance as above but all of it in the PGS. Continuous fits use the scripts' default search
+(`extraTries = 8`, n = 32,000); binary fits use `extraTries = 15, exhaustive = TRUE` (n = 100,000).
+
+| Model | Result | Max abs. error (structural) |
+|---|---|---|
+| Eq Model 1 | **PASS** | 6e-05 |
+| DisEq Model 1 | **PASS** | 3e-05 |
+| Eq Binary Model 1 | **PASS** | 5e-03 (`w`, 1.0 SE) |
+| DisEq Binary Model 1 | **PASS** | 8e-03 (`delta`, 2.3 SE) |
+
+The two continuous scripts also reach the same −2LL as the reference `perform_SEM_model1_eq/_dis()` on the same
+data, with estimates agreeing to ~1e-5. The 2.3 SE miss in the DisEq binary fit is sampling noise. In four more
+datasets (seeds 11–14) every |z| ≤ 1.4, and the mean z per parameter lies between −0.21 and 0.17.
+
+The test also checks the paper's statements about a partial PGS (`delta = .2, a = √.6`):
+
+| Case | delta | f | VF | w |
+|---|---|---|---|---|
+| Eq, no AM | .200 (.200) | .150 (.150) | .058 (.058) | .035 (.035) |
+| Eq, AM | .200 (.200) | .316 (.150) | .532 (.120) | .163 (.077) |
+| DisEq, AM | .200 (.200) | .214 (.150) | .181 (.081) | .075 (.049) |
+
+The table shows the Model 1 estimate with the truth in parentheses; DisEq `VF` and `w` are the offspring's
+`VF_o` and `w_o`. As the paper says, `delta` is always unbiased, the VT estimates are unbiased without AM, and with
+AM `VF` is inflated 2–4.4×.
+
+The continuous Model 1 scripts take their starting values from the sample moments (`delta` from
+`thetaT - thetaNT`, `Omega` from `thetaT`, `VY` from `var(Yo)`). With fixed starting values like the other scripts,
+the Eq AM case above stopped on its first attempt at a point with `VY = 223` and `delta = -1.96` and status code 1,
+which `mxTryHard` accepts unless `exhaustive = TRUE`. With the moment-based starts, the default search matches the
+exhaustive optimum (−2LL within .003) on GeneEvolve trios from `../OpenMxScripts_Cascade/Validation` at
+n = 48,493, 3,000 and 1,000, in both regimes. The other continuous scripts' fixed starts may have the same weakness.
+
 **Standard errors of the DisEq SameTrait Observed script on simulated data.** Fitting the corrected
 `Disequilibrium/UniSEMPGS_DisEq_SameTrait_ObservedYPYM.R` to 36 GeneEvolve populations (~4,000 trios each,
 `../OpenMxScripts_Cascade/Validation/07_original_diseq_check.R`) gives unbiased estimates: every mean is within
@@ -338,6 +401,7 @@ Rscript Equilibrium/test_EquilibriumModels.R                    # ~5 fits, write
 Rscript Disequilibrium/test_DisequilibriumModels.R               # ~5 fits, writes Disequilibrium/test_results/
 Rscript EquilibriumBinary/test_BinaryEquilibriumModels.R          # ~5 fits, writes EquilibriumBinary/test_results/
 Rscript DisequilibriumBinary/test_BinaryDisequilibriumModels.R    # ~5 fits, writes DisequilibriumBinary/test_results/
+Rscript test_Model1.R                                            # the 4 Model 1 scripts + paper checks, writes test_results/
 ```
 
 The binary suites take noticeably longer per fit (~3 minutes total each) because `extraTries = 15`
