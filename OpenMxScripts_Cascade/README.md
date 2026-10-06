@@ -154,7 +154,7 @@ Rscript 05_moment_sensitivity.R                    # which data moments move the
 python 06_replicate_eq_social.py                   # 24 more Eq social-homogamy populations (output/replication)
 Rscript 06_replicate_eq_social.R                   # ... and their fits
 Rscript 07_original_diseq_check.R                  # the corrected ORIGINAL DisEq script on GeneEvolve data
-Rscript 08_model1.R --workers 6                    # the Cascade Model 1 scripts (output/model1)
+Rscript 08_model1.R --workers 3                    # the Cascade Model 1 scripts (output/model1)
 jupyter nbconvert --to notebook --execute --inplace 03_results.ipynb
 ```
 

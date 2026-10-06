@@ -14,7 +14,7 @@
 ##    01_simulate.py) are fit with the default search and with exhaustive = T. These populations have a latent
 ##    genetic score (a > 0), so Model 1 is misspecified there and only the -2LL comparison is meaningful.
 ##    Skipped when output/data/ is absent.
-## Run with: Rscript 08_model1.R [--workers 6]   (outputs in output/model1/)
+## Run with: Rscript 08_model1.R [--workers 3]   (outputs in output/model1/)
 
 cmdArgs <- commandArgs(trailingOnly = FALSE)
 fileArg <- sub("^--file=", "", grep("^--file=", cmdArgs, value = TRUE))
@@ -25,7 +25,7 @@ getArg <- function(flag, default){
     a <- commandArgs(trailingOnly = TRUE); i <- match(flag, a)
     if (is.na(i) || i == length(a)) default else a[i + 1]
 }
-workers <- as.integer(getArg("--workers", 6))
+workers <- as.integer(getArg("--workers", 3))
 
 suppressPackageStartupMessages({ library(OpenMx); library(data.table); library(MASS); library(parallel) })
 # cap the threads the fitting scripts request, as in 02_fit_models.R

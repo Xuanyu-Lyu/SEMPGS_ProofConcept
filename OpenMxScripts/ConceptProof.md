@@ -5,8 +5,8 @@ model designs, each fit under two regimes (**equilibrium**, `Equilibrium/`, vs *
 `Disequilibrium/`) and two trait types (**continuous**, fit as an ordinary phenotype, vs **binary**,
 fit as a liability-threshold trait in `EquilibriumBinary/`/`DisequilibriumBinary/`) — how each model
 is designed and identified, how the parameter-recovery simulations are constructed, and the test
-results. It also covers four Model 1 functions (Balbona et al. 2021, no latent genetic score) in the same
-four folders (§3).
+results. It also covers four Model 1 and four Model 0 functions (Balbona et al. 2021, no latent genetic score) in
+the same four folders (§3).
 
 All models are scalar (univariate) versions of the bivariate SEM-PGS framework: every matrix in the
 bivariate math is treated as a scalar. Fitting is done in OpenMx (NPSOL, raw-data ML, nonlinear
@@ -162,6 +162,27 @@ The estimates are unbiased only to the degree that the PGS captures the heritabi
 PGS–LGS covariance `i` that Model 1 leaves out inflates `thetaNT`, and with it `w` and `VF` (the paper's motivation
 for Model 2). Without AM, `f`, `VF` and `w` are unbiased whatever the PGS r² (paper eq 6). `delta` is unbiased in
 both cases because `thetaT - thetaNT = delta*k`. `test_Model1.R` checks all three statements (§5).
+
+### Model 0 of Balbona et al. (2021): vertical transmission without assortative mating
+
+| Regime | Continuous script | Binary script | Reference |
+|---|---|---|---|
+| Equilibrium | `Equilibrium/UniSEMPGS_Model0.R` | `EquilibriumBinary/UniSEMPGS_Binary_Model0.R` | `perform_SEM_model0()` |
+| Disequilibrium | `Disequilibrium/UniSEMPGS_DisEq_Model0.R` | `DisequilibriumBinary/UniSEMPGS_DisEq_Binary_Model0.R` | `perform_SEM_model0()` |
+
+Model 0 is Model 1 with `mu = 0`: the four haplotypic PGS are uncorrelated (variance `k`, covariance 0), and
+`Omega = delta*k + .5*w`, `w = 2*f*Omega`, `VF = 2*f^2*VY`, `VY = 2*delta*Omega + delta*w + VF + VE`,
+`thetaNT = .5*w`, `thetaT = delta*k + thetaNT` (paper eqs 1–5, per data column). The free structural parameters are
+`delta, f, VE`, just-identified by `VY, thetaT, thetaNT`. Without assortative mating the disequilibrium model is the
+equilibrium model (the offspring's `w`, `VF` and `VY` equal the parents'); the DisEq scripts exist for a parallel
+folder layout and are written in the DisEq scripts' form. Without assortative mating, `f`, `VF` and `w` are
+estimated without bias whatever share of the heritability the PGS captures (paper eqs 6–9).
+
+`test_Model0.R` (exact-covariance data, generating values `delta = .8, a = 0, VE = .36, f = .15`): all four scripts
+recover the truth (continuous to ~1e-6; binary, n = 50,000, within one SE), the continuous fit matches
+`perform_SEM_model0()` (same −2LL, estimates within 1e-6), and with `a = sqrt(.6)` and no assortative mating `f`, `VF`
+and `w` are unbiased. Both binary fits end with status 6 (OpenMx "red": the gradient check fails) after all restarts,
+although every restart reaches the same −2LL and the estimates are within one SE of the truth.
 
 ### Binary variants: liability-threshold identification
 
@@ -402,6 +423,7 @@ Rscript Disequilibrium/test_DisequilibriumModels.R               # ~5 fits, writ
 Rscript EquilibriumBinary/test_BinaryEquilibriumModels.R          # ~5 fits, writes EquilibriumBinary/test_results/
 Rscript DisequilibriumBinary/test_BinaryDisequilibriumModels.R    # ~5 fits, writes DisequilibriumBinary/test_results/
 Rscript test_Model1.R                                            # the 4 Model 1 scripts + paper checks, writes test_results/
+Rscript test_Model0.R                                            # the 4 Model 0 scripts, reference + paper checks (~1 min)
 ```
 
 The binary suites take noticeably longer per fit (~3 minutes total each) because `extraTries = 15`

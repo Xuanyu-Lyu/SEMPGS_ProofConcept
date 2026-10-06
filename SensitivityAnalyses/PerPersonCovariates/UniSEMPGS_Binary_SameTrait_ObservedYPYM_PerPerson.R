@@ -1,0 +1,196 @@
+## PROTOTYPE of OpenMxScripts/EquilibriumBinary/UniSEMPGS_Binary_SameTrait_ObservedYPYM.R with per-person covariates.
+## Only the covariate handling differs from that script (the `covars` argument and the covariate block).
+##
+## Univariate SEM-PGS model: the same trait in parents and offspring, parental phenotypes observed.
+## Equilibrium: assortative mating and vertical transmission have gone on for many generations.
+## Binary trait: fit as a liability-threshold model with the liability variance fixed at 1.
+##
+## Estimates (returned by summary(fit, verbose = TRUE)):
+##   delta, a    effects of the haplotypic PGS and of the latent genetic score on the phenotype
+##   f           vertical transmission from each parent's phenotype to the offspring's environment F
+##   mu          assortative-mating copath, cov(Yp, Ym) = mu*VY^2
+##   VE          residual variance
+##   thresholds  liability thresholds (thresh_Yp, thresh_Ym, thresh_Yo)
+##   plus Omega, Gamma, gt, gc, ht, hc, ic, w, v: covariance terms held to their model values by constraints.
+##
+## Input:
+##   data_path   text file with a header row (read by data.table::fread) and the columns
+##                 Yp1, Ym1    father's and mother's phenotype (0/1)
+##                 Yo1         offspring phenotype (0/1)
+##                 Tp1, NTp1   father's transmitted and non-transmitted haplotypic PGS
+##                 Tm1, NTm1   mother's transmitted and non-transmitted haplotypic PGS
+##               Other columns (e.g. covariates) may be present.
+##               Each haplotypic PGS is assumed to have variance k = .5 in the base population.
+##   covars      optional covariates, which shift the PGS means and the thresholds. Either
+##                 a character vector of column names: every covariate adjusts every variable (family-level
+##                 covariates, e.g. genotyping batch), or
+##                 a named list from data variables to their own covariate columns (person-level covariates), e.g.
+##                 list(Yp1 = "age_p", Ym1 = "age_m", Yo1 = c("age_o", "sex_o"), Tp1 = "PC1_p", NTp1 = "PC1_p",
+##                      Tm1 = "PC1_m", NTm1 = "PC1_m"); variables not named get no covariates.
+##   feaTol, optTol, extraTries, exhaustive, jitterMean, jitterVar  optimizer settings (NPSOL, mxTryHard)
+
+fitUniSEMPGS_Binary_SameTrait_ObservedYPYM_PerPerson <- function(data_path, covars = NULL, feaTol = 1e-6, optTol = 1e-8, jitterMean = .2, jitterVar = .05, extraTries = 30, exhaustive = F){
+    library(OpenMx)
+    library(data.table)
+    library(stringr)
+
+    mxOption(NULL,"Calculate Hessian","Yes")
+    mxOption(NULL,"Standard Errors","Yes")
+    mxOption(NULL,"Default optimizer","NPSOL")
+    mxOption(NULL,"Feasibility tolerance",as.character(feaTol))
+    mxOption(NULL,"Optimality tolerance",as.character(optTol))
+    mxOption(NULL,"Number of Threads", value = parallel::detectCores())
+
+    Example_Data  <- fread(data_path, header = T)
+    obs_vars    <- c("Yp1", "Ym1", "Yo1", "Tp1", "NTp1", "Tm1", "NTm1")   # extra columns (e.g. covariates) are allowed
+    binary_vars <- c("Yp1", "Ym1", "Yo1")
+    for (v in binary_vars) Example_Data[[v]] <- mxFactor(Example_Data[[v]], levels = c(0, 1))
+    # covars as a character vector: every covariate adjusts every variable (family level); as a named list: each
+    # variable is adjusted for its own covariate columns only (person level)
+    covMap <- if (is.list(covars)) covars else setNames(rep(list(covars), length(obs_vars)), obs_vars)
+    badVar <- setdiff(names(covMap), obs_vars)
+    if (length(badVar) > 0) stop("covars names must be data variables (", paste(obs_vars, collapse = ", "), "): ",
+                                 paste(badVar, collapse = ", "))
+    covCols <- unique(unlist(covMap, use.names = FALSE))
+    if (length(covCols) > 0) {
+        missing_cov <- setdiff(covCols, colnames(Example_Data))
+        if (length(missing_cov) > 0) stop("Covariate column(s) not found in data: ", paste(missing_cov, collapse = ", "))
+        Example_Data <- Example_Data[complete.cases(Example_Data[, covCols, with = FALSE]), ]
+    }
+
+    # Phenotypic and Residual Variance
+    # Liability variance is FIXED at 1 (not free): identifies the scale of the binary/threshold model.
+    VY    <- mxMatrix(type="Full", nrow=1, ncol=1, free=F, values=1, label="VY11", name="VY")
+    VE    <- mxMatrix(type="Full", nrow=1, ncol=1, free=T, values=.4, label="VE11", name="VE", lbound = .001)
+
+    # Scalar Algebra for Variances
+    VY_Algebra <- mxAlgebra(2 * delta * Omega + 2 * a * Gamma + w * delta + v * a + VF_Algebra + VE, name="VY_Algebra")
+    VF_Algebra <- mxAlgebra(2 * f^2 * VY + 2 * f^2 * VY^2 * mu, name="VF_Algebra")
+
+    VY_Constraint    <- mxConstraint(VY == VY_Algebra, name='VY_Constraint')
+
+    # Genetic effects
+    delta <- mxMatrix(type="Full", nrow=1, ncol=1, free=T, values=.2, label="delta11", name="delta")
+    a     <- mxMatrix(type="Full", nrow=1, ncol=1, free=T, values=.3, label="a11", name="a", lbound = .001)
+    k     <- mxMatrix(type="Full", nrow=1, ncol=1, free=F, values=.5, label="k11", name="k")
+    j     <- mxMatrix(type="Full", nrow=1, ncol=1, free=F, values=.5, label="j11", name="j")
+    Omega <- mxMatrix(type="Full", nrow=1, ncol=1, free=T, values=.15, label="Omega11", name="Omega")
+    Gamma <- mxMatrix(type="Full", nrow=1, ncol=1, free=T, values=.15, label="Gamma11", name="Gamma")
+
+    Omega_Algebra <- mxAlgebra(2 * delta * gc + 2 * a * ic + delta * k + 0.5 * w , name="Omega_Algebra")
+    Gamma_Algebra <- mxAlgebra(2 * a * hc + 2 * delta * ic + a * j + 0.5 * v, name="Gamma_Algebra")
+
+    Omega_Constraint <- mxConstraint(Omega == Omega_Algebra, name='Omega_Constraint')
+    Gamma_Constraint <- mxConstraint(Gamma == Gamma_Algebra, name='Gamma_Constraint')
+
+    adelta_Constraint_Algebra <- mxAlgebra(delta, name = "adelta_Constraint_Algebra")
+    adelta_Constraint <- mxConstraint(a == delta, name = "adelta_Constraint")
+
+    j_Algebra    <- mxAlgebra(k, name = "j_Algebra")
+    j_constraint <- mxConstraint(j == j_Algebra, name = "j_constraint")
+
+    # Assortative mating effects
+    mu    <- mxMatrix(type="Full", nrow=1, ncol=1, free=T, values=.1,  label="mu11", name="mu")
+    gt    <- mxMatrix(type="Full", nrow=1, ncol=1, free=T, values=.02, label="gt11", name="gt")
+    ht    <- mxMatrix(type="Full", nrow=1, ncol=1, free=T, values=.02, label="ht11", name="ht")
+    gc    <- mxMatrix(type="Full", nrow=1, ncol=1, free=T, values=.02, label="gc11", name="gc")
+    hc    <- mxMatrix(type="Full", nrow=1, ncol=1, free=T, values=.02, label="hc11", name="hc")
+
+    gt_Algebra <- mxAlgebra(Omega * mu * Omega, name="gt_Algebra")
+    ht_Algebra <- mxAlgebra(Gamma * mu * Gamma, name="ht_Algebra")
+    gc_Algebra <- mxAlgebra(gt, name="gc_Algebra") # Simplified for scalar
+    hc_Algebra <- mxAlgebra(ht, name="hc_Algebra")
+
+    ic    <- mxMatrix(type="Full", nrow=1, ncol=1, free=T, values=.02, label="ic11",   name="ic")
+
+    ic_Algebra   <- mxAlgebra(Omega * mu * Gamma, name="ic_Algebra")
+
+    gt_constraint   <- mxConstraint(gt == gt_Algebra, name='gt_constraint')
+    ht_constraint   <- mxConstraint(ht == ht_Algebra, name='ht_constraint')
+    gc_constraint   <- mxConstraint(gc == gc_Algebra, name='gc_constraint')
+    hc_constraint   <- mxConstraint(hc == hc_Algebra, name='hc_constraint')
+    ic_constraint   <- mxConstraint(ic == ic_Algebra, name='ic_constraint')
+
+    # Vertical transmission effects
+    f     <- mxMatrix(type="Full", nrow=1, ncol=1, free=T, values=.15, label="f11", name="f")
+    w     <- mxMatrix(type="Full", nrow=1, ncol=1, free=T, values=.05, label="w11", name="w")
+    v     <- mxMatrix(type="Full", nrow=1, ncol=1, free=T, values=.05, label="v11", name="v")
+
+    w_Algebra     <- mxAlgebra(2 * f * Omega + 2 * f * VY * mu * Omega, name="w_Algebra")
+    v_Algebra     <- mxAlgebra(2 * f * Gamma + 2 * f * VY * mu * Gamma, name="v_Algebra")
+    wv_constraint_algebra <- mxAlgebra((w * sqrt(2 * delta^2 * k) / sqrt(2 * a^2 * j)), name='wv_constraint_algebra')
+
+    v_constraint  <- mxConstraint(v == v_Algebra, name='v_constraint')
+    w_constraint  <- mxConstraint(w == w_Algebra, name='w_constraint')
+    wv_constraint <- mxConstraint(v == wv_constraint_algebra, name='wv_constraint')
+
+    # Between-people covariances
+    thetaNT <- mxAlgebra(2 * delta * gc + 2 * a * ic + .5 * w, name="thetaNT")
+    thetaT  <- mxAlgebra(delta * k + thetaNT, name="thetaT")
+    Yp_PGSm <- mxAlgebra(VY * mu * Omega, name="Yp_PGSm")
+    Ym_PGSp <- mxAlgebra(VY * mu * Omega, name="Ym_PGSp")
+    Yp_Ym   <- mxAlgebra(VY * mu * VY,    name="Yp_Ym")
+    Ym_Yp   <- mxAlgebra(VY * mu * VY,    name="Ym_Yp")
+    Yo_Yp   <- mxAlgebra(delta * Omega + a * Gamma + (delta * Omega + a * Gamma) * mu * VY + f * VY + f * VY^2 * mu, name = "Yo_Yp")
+    Yo_Ym   <- mxAlgebra(delta * Omega + a * Gamma + (delta * Omega + a * Gamma) * mu * VY + f * VY + f * VY^2 * mu, name = "Yo_Ym")
+
+    # Expected covariances matrix
+    CovMatrix <- mxAlgebra(rbind(
+        cbind(VY_Algebra, Yp_Ym,      Yo_Yp,     Omega,   Omega,   Yp_PGSm, Yp_PGSm),
+        cbind(Ym_Yp,      VY_Algebra, Yo_Ym,     Ym_PGSp, Ym_PGSp, Omega,   Omega),
+        cbind(Yo_Yp,      Yo_Ym,      VY_Algebra,thetaT,  thetaNT, thetaT,  thetaNT),
+        cbind(Omega,      Ym_PGSp,    thetaT,    k+gc,    gc,      gt,      gt),
+        cbind(Omega,      Ym_PGSp,    thetaNT,   gc,      k+gc,    gt,      gt),
+        cbind(Yp_PGSm,    Omega,      thetaT,    gt,      gt,      k+gc,    gc),
+        cbind(Yp_PGSm,    Omega,      thetaNT,   gt,      gt,      gc,      k+gc)),
+        dimnames=list(obs_vars, obs_vars), name="expCov")
+
+    # Means: fixed at 0 for the binary phenotypes (identification requires fixing either the mean
+    # or the threshold; we fix the mean and let the threshold float), free for the continuous PGS.
+    # Each observed phenotype gets its own free threshold.
+    # Covariates (if any) enter as definition variables, as in r2_omx_partial(): a PGS mean becomes mean + sum(b * covar)
+    # and a threshold becomes t0 + sum(g * covar), over the covariates that covars assigns to that variable; every other
+    # covariate-variable effect is fixed at 0.
+    Means0 <- mxMatrix(type = "Full", nrow = 1, ncol = 7, free = c(F, F, F, T, T, T, T), values = 0,
+        label = c("meanYp1", "meanYm1", "meanYo1", "meanTp1", "meanNTp1", "meanTm1", "meanNTm1"),
+        dimnames = list(NULL, obs_vars), name = "Means0")
+    Th0 <- mxMatrix(type = "Full", nrow = 1, ncol = 3, free = TRUE, values = 0,
+        labels = c("thresh_Yp11", "thresh_Ym11", "thresh_Yo11"), name = "Th0")
+    if (length(covCols) > 0) {
+        nCov   <- length(covCols)
+        uses   <- matrix(sapply(obs_vars, function(vr) covCols %in% covMap[[vr]]), nrow = nCov,
+                         dimnames = list(covCols, obs_vars))                 # does covariate i adjust variable v?
+        isBin  <- obs_vars %in% binary_vars
+        bFree  <- uses & matrix(!isBin, nCov, length(obs_vars), byrow = TRUE)
+        gFree  <- uses[, isBin, drop = FALSE]
+        defCov <- mxMatrix(type = "Full", nrow = 1, ncol = nCov, free = FALSE, labels = paste0("data.", covCols), name = "defCov")
+        bCov   <- mxMatrix(type = "Full", nrow = nCov, ncol = length(obs_vars), free = bFree, values = 0,
+            labels = ifelse(bFree, outer(covCols, obs_vars, function(cv, vr) paste0("b_", vr, "_", cv)), NA), name = "bCov")
+        gCov   <- mxMatrix(type = "Full", nrow = nCov, ncol = length(binary_vars), free = gFree, values = 0,
+            labels = ifelse(gFree, outer(covCols, binary_vars, function(cv, vr) paste0("g_", vr, "_", cv)), NA), name = "gCov")
+        Means   <- mxAlgebra(Means0 + defCov %*% bCov, dimnames = list(NULL, obs_vars), name = "expMeans")
+        Th      <- mxAlgebra(Th0 + defCov %*% gCov, name = "Th")
+        CovObjs <- list(Means0, Th0, defCov, bCov, gCov)
+    } else {
+        Means   <- mxAlgebra(Means0, dimnames = list(NULL, obs_vars), name = "expMeans")
+        Th      <- mxAlgebra(Th0, name = "Th")
+        CovObjs <- list(Means0, Th0)
+    }
+
+    ModelExpectations <- mxExpectationNormal(covariance="expCov", means="expMeans", dimnames=obs_vars,
+                                            thresholds="Th", threshnames=binary_vars)
+    Example_Data_Mx <- mxData(observed=Example_Data, type="raw" )
+    FitFunctionML   <- mxFitFunctionML(jointConditionOn = "continuous")
+
+    Params <- list(
+                VY, VE, delta, a, k, j, Omega, Gamma, mu, gt, ht, gc, hc, ic, f, w, v,
+                VY_Algebra, VF_Algebra, Omega_Algebra, Gamma_Algebra, adelta_Constraint_Algebra, j_Algebra, gt_Algebra, ht_Algebra, gc_Algebra, hc_Algebra, ic_Algebra, w_Algebra, v_Algebra, wv_constraint_algebra,
+                VY_Constraint, Gamma_Constraint, j_constraint, ht_constraint, hc_constraint, ic_constraint, v_constraint, w_constraint,
+                thetaNT, thetaT, Yp_PGSm, Ym_PGSp, Yp_Ym, Ym_Yp, Yo_Yp, Yo_Ym,
+                CovMatrix, CovObjs, Means, Th, ModelExpectations, FitFunctionML)
+
+    Model1 <- mxModel("UniSEM_Binary_SameTrait_ObservedYPYM", Params, Example_Data_Mx)
+    fitModel1 <- mxTryHard(Model1, extraTries = extraTries, OKstatuscodes = c(0,1), intervals=T, silent=T, exhaustive = exhaustive, jitterDistrib = "rnorm", loc=jitterMean, scale = jitterVar)
+
+    return(summary(fitModel1, verbose = TRUE))
+}
