@@ -18,7 +18,10 @@
 ##               Other columns (e.g. covariates) may be present.
 ##               Each haplotypic PGS is assumed to have variance k = .5 in the base population.
 ##   h2_RDR      heritability estimated by RDR (relatedness disequilibrium regression); identifies a
-##   covars      optional names of covariate columns; they shift the PGS means and the thresholds
+##   covars      optional covariates, each applied only to the person it belongs to: a named list from data variables
+##               to that person's covariate columns, e.g. list(Yo1 = c("age_o", "sex_o"), Tp1 = "PC1_p", NTp1 = "PC1_p",
+##               Tm1 = "PC1_m", NTm1 = "PC1_m"). A covariate shifts the threshold or PGS mean of only the variables it
+##               is listed under; variables not listed get no covariates.
 ##   feaTol, optTol, extraTries, exhaustive, jitterMean, jitterVar  optimizer settings (NPSOL, mxTryHard)
 
 fitUniSEMPGS_DisEq_Binary_SameTrait_LatentParents <- function(data_path, h2_RDR, covars = NULL, feaTol = 1e-6, optTol = 1e-8, jitterMean = .2, jitterVar = .05, extraTries = 30, exhaustive = F){
@@ -37,10 +40,19 @@ fitUniSEMPGS_DisEq_Binary_SameTrait_LatentParents <- function(data_path, h2_RDR,
     obs_vars    <- c("Yo1", "Tp1", "NTp1", "Tm1", "NTm1")   # extra columns (e.g. covariates) are allowed
     binary_vars <- "Yo1"
     Example_Data[["Yo1"]] <- mxFactor(Example_Data[["Yo1"]], levels = c(0, 1))
-    if (length(covars) > 0) {
-        missing_cov <- setdiff(covars, colnames(Example_Data))
+    # covars: a named list from data variables to that person's own covariate columns (see the header); each covariate
+    # adjusts only the variables it is listed under
+    if (length(covars) > 0 && (!is.list(covars) || is.null(names(covars)) || any(names(covars) == "")))
+        stop("covars must be a named list from data variables to that person's covariate columns, e.g. ",
+             "list(Yo1 = c(\"age_o\", \"sex_o\"), Tp1 = \"PC1_p\", NTp1 = \"PC1_p\")")
+    badVar <- setdiff(names(covars), obs_vars)
+    if (length(badVar) > 0) stop("covars names must be data variables (", paste(obs_vars, collapse = ", "), "): ",
+                                 paste(badVar, collapse = ", "))
+    covCols <- unique(unlist(covars, use.names = FALSE))
+    if (length(covCols) > 0) {
+        missing_cov <- setdiff(covCols, colnames(Example_Data))
         if (length(missing_cov) > 0) stop("Covariate column(s) not found in data: ", paste(missing_cov, collapse = ", "))
-        Example_Data <- Example_Data[complete.cases(Example_Data[, covars, with = FALSE]), ]
+        Example_Data <- Example_Data[complete.cases(Example_Data[, covCols, with = FALSE]), ]
     }
 
     # --- Variances ---
@@ -140,21 +152,25 @@ fitUniSEMPGS_DisEq_Binary_SameTrait_LatentParents <- function(data_path, h2_RDR,
 
     # Yo1's mean is fixed at 0 (identification requires fixing either the mean or the threshold);
     # the PGS means stay free.
-    # Covariates (if any) enter as definition variables, as in r2_omx_partial(): every PGS mean
-    # becomes mean + sum(b * covar) and the threshold becomes t0 + sum(g * covar).
+    # Covariates (if any) enter as definition variables, as in r2_omx_partial(): a PGS mean becomes mean + sum(b * covar)
+    # and a threshold becomes t0 + sum(g * covar), over the covariates covars lists for that variable; every other
+    # covariate-variable effect is fixed at 0.
     Means0 <- mxMatrix(type = "Full", nrow = 1, ncol = 5, free = c(F, T, T, T, T), values = 0,
         label = c("meanYo1", "meanTp1", "meanNTp1", "meanTm1", "meanNTm1"),
         dimnames = list(NULL, obs_vars), name = "Means0")
     Th0 <- mxMatrix(type = "Full", nrow = 1, ncol = 1, free = TRUE, values = 0,
         labels = "thresh_Yo11", name = "Th0")
-    if (length(covars) > 0) {
-        nCov   <- length(covars)
-        isCont <- !(obs_vars %in% binary_vars)
-        defCov <- mxMatrix(type = "Full", nrow = 1, ncol = nCov, free = FALSE, labels = paste0("data.", covars), name = "defCov")
-        bCov   <- mxMatrix(type = "Full", nrow = nCov, ncol = length(obs_vars), free = matrix(isCont, nCov, length(obs_vars), byrow = TRUE),
-            values = 0, labels = outer(covars, obs_vars, function(cv, vr) ifelse(vr %in% binary_vars, NA, paste0("b_", vr, "_", cv))), name = "bCov")
-        gCov   <- mxMatrix(type = "Full", nrow = nCov, ncol = length(binary_vars), free = TRUE, values = 0,
-            labels = outer(covars, binary_vars, function(cv, vr) paste0("g_", vr, "_", cv)), name = "gCov")
+    if (length(covCols) > 0) {
+        nCov   <- length(covCols)
+        uses   <- matrix(sapply(obs_vars, function(vr) covCols %in% covars[[vr]]), nrow = nCov,
+                         dimnames = list(covCols, obs_vars))                 # does covariate i adjust variable v?
+        bFree  <- uses & matrix(!(obs_vars %in% binary_vars), nCov, length(obs_vars), byrow = TRUE)
+        gFree  <- uses[, binary_vars, drop = FALSE]
+        defCov <- mxMatrix(type = "Full", nrow = 1, ncol = nCov, free = FALSE, labels = paste0("data.", covCols), name = "defCov")
+        bCov   <- mxMatrix(type = "Full", nrow = nCov, ncol = length(obs_vars), free = bFree, values = 0,
+            labels = ifelse(bFree, outer(covCols, obs_vars, function(cv, vr) paste0("b_", vr, "_", cv)), NA), name = "bCov")
+        gCov   <- mxMatrix(type = "Full", nrow = nCov, ncol = length(binary_vars), free = gFree, values = 0,
+            labels = ifelse(gFree, outer(covCols, binary_vars, function(cv, vr) paste0("g_", vr, "_", cv)), NA), name = "gCov")
         Means   <- mxAlgebra(Means0 + defCov %*% bCov, dimnames = list(NULL, obs_vars), name = "expMeans")
         Th      <- mxAlgebra(Th0 + defCov %*% gCov, name = "Th")
         CovObjs <- list(Means0, Th0, defCov, bCov, gCov)

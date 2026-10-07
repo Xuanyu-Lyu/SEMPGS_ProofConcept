@@ -1,6 +1,7 @@
-## Does per-person covariate control work in the binary scripts? Prototype:
-## UniSEMPGS_Binary_SameTrait_ObservedYPYM_PerPerson.R (this folder) vs the current
-## OpenMxScripts/EquilibriumBinary/UniSEMPGS_Binary_SameTrait_ObservedYPYM.R.
+## Does per-person covariate control work in the binary scripts? Since Oct 2026 every binary script takes covars only as
+## a per-person list; this test fits OpenMxScripts/EquilibriumBinary/UniSEMPGS_Binary_SameTrait_ObservedYPYM.R with it
+## and compares it with the earlier family-level form (every covariate on every variable), which the reference copy
+## UniSEMPGS_Binary_SameTrait_ObservedYPYM_PerPerson.R in this folder still accepts.
 ##
 ## Data: trios from the binary equilibrium SameTrait model (the values of test_BinaryEquilibriumModels.R), with
 ## person-specific covariates that act on that person only:
@@ -9,15 +10,15 @@
 ##   PC1_p, PC1_m         each parent's ancestry PC (spouses correlated .3) shifts the means of that parent's two
 ##                        haplotypic PGS by B_PC
 ## Fits (every fit starts at the true structural values with covariate effects at 0, unless noted):
-##   per_person       prototype, covars = list(Yp1 = "age_p", Ym1 = "age_m", Yo1 = "age_o", Tp1/NTp1 = "PC1_p",
+##   per_person       current script, covars = list(Yp1 = "age_p", Ym1 = "age_m", Yo1 = "age_o", Tp1/NTp1 = "PC1_p",
 ##                    Tm1/NTm1 = "PC1_m")                                                   (correct, 7 effects)
-##   trio_all         current script, covars = c("age_p", "age_m", "age_o", "PC1_p", "PC1_m")
+##   trio_all         reference copy, covars = c("age_p", "age_m", "age_o", "PC1_p", "PC1_m")
 ##                    (every column on every variable: correct but 35 effects, 28 of them truly 0)
-##   trio_child_age   current script, covars = "age_o" (one column for the whole trio)       (misspecified)
+##   trio_child_age   reference copy, covars = "age_o" (one column for the whole trio)       (misspecified)
 ##   none             current script, no covariates                                          (misspecified)
-##   per_person_default  prototype as a user would run it: the script's own starting values and mxTryHard
+##   per_person_default  current script as a user would run it: the script's own starting values and mxTryHard
 ## Plus two checks without optimizing: at the true values, per_person and trio_all must give the same -2LL (their
-## extra effects are 0 there), and the prototype given a character vector must give the current script's -2LL.
+## extra effects are 0 there), and the reference copy given the per-person list must give the current script's -2LL.
 ## At most 3 R sessions. Run with: Rscript test_per_person_covariates.R [--n 10000] [--workers 3]
 
 cmdArgs <- commandArgs(trailingOnly = FALSE)
@@ -100,17 +101,17 @@ noSE <- function(m) mxOption(mxOption(m, "Calculate Hessian", "No"), "Standard E
 ## checks at fixed parameter values (no optimizer)
 m2LLat <- function(m) mxRun(m, useOptimizer = FALSE, silent = TRUE)$output$Minus2LogLikelihood
 withTrue <- function(m){ p <- omxGetParameters(m); lab <- intersect(names(truth), names(p)); omxSetParameters(atTruth(m), labels = lab, values = truth[lab]) }
-chk <- c(per_person   = m2LLat(withTrue(prototype(tsv, covars = perPerson))),
-         trio_all     = m2LLat(withTrue(current(tsv, covars = allCols))),
-         proto_vector = m2LLat(withTrue(prototype(tsv, covars = allCols))))
-cat(sprintf("\n-2LL at the true values: per_person %.4f | trio_all %.4f | prototype with a vector %.4f\n", chk[1], chk[2], chk[3]))
+chk <- c(per_person = m2LLat(withTrue(current(tsv, covars = perPerson))),
+         trio_all   = m2LLat(withTrue(prototype(tsv, covars = allCols))),
+         ref_list   = m2LLat(withTrue(prototype(tsv, covars = perPerson))))
+cat(sprintf("\n-2LL at the true values: per_person %.4f | trio_all %.4f | reference copy with the list %.4f\n", chk[1], chk[2], chk[3]))
 
 FITS <- list(
-    per_person         = function() withSE(mxRun(atTruth(prototype(tsv, covars = perPerson)), silent = TRUE)),
-    per_person_default = function() suppressMessages(mxTryHard(noSE(prototype(tsv, covars = perPerson)), extraTries = 5,
+    per_person         = function() withSE(mxRun(atTruth(current(tsv, covars = perPerson)), silent = TRUE)),
+    per_person_default = function() suppressMessages(mxTryHard(noSE(current(tsv, covars = perPerson)), extraTries = 5,
                              OKstatuscodes = c(0, 1), silent = TRUE, jitterDistrib = "rnorm", loc = .2, scale = .05)),
-    trio_all           = function() mxRun(noSE(atTruth(current(tsv, covars = allCols))), silent = TRUE),
-    trio_child_age     = function() mxRun(noSE(atTruth(current(tsv, covars = "age_o"))), silent = TRUE),
+    trio_all           = function() mxRun(noSE(atTruth(prototype(tsv, covars = allCols))), silent = TRUE),
+    trio_child_age     = function() mxRun(noSE(atTruth(prototype(tsv, covars = "age_o"))), silent = TRUE),
     none               = function() mxRun(noSE(atTruth(current(tsv, covars = NULL))), silent = TRUE))
 withSE <- function(fit) fit       # per_person keeps the scripts' Hessian/SE options
 if (!is.null(only)) FITS <- FITS[strsplit(only, ",")[[1]]]

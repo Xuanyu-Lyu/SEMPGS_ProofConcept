@@ -201,6 +201,17 @@ SameTrait models `Yp1`/`Ym1`/`Yo1` share a single free threshold (same trait ⇒
 prevalence); in the DiffTrait models `Yp1`/`Ym1` (parent trait) share one threshold and `Yo1` (a
 different trait) gets its own.
 
+**Covariates (binary scripts).** `covars` is a named list from each data variable to that person's
+own covariate columns, e.g. `list(Yp1 = "age_p", Ym1 = "age_m", Yo1 = c("age_o", "sex_o"), Tp1 =
+"PC1_p", NTp1 = "PC1_p", Tm1 = "PC1_m", NTm1 = "PC1_m")`. The covariates enter as definition
+variables: each one shifts the threshold (binary phenotype) or the mean (PGS column) of only the
+variables it is listed under, and every cross-person effect is fixed at 0. Until Oct 2026 `covars`
+was a vector of columns, each applied to every variable in the trio; that form now stops with an
+error. `../SensitivityAnalyses/PerPersonCovariates/` has the simulation that compared the two forms.
+The per-person form recovers the truth. The old form fits the same, but adds 28 effects whose true
+value is 0 in that design. Adjusting the whole trio for one person's covariate biases the other
+persons' thresholds.
+
 **Identifying the DiffTrait_LatentYPYM models (#3, #8).** With both traits fully latent on the
 parent side, the 5-variable data (`Yo1, Tp1, NTp1, Tm1, NTm1`) supply only 4 independent moments
 (`VY, thetaT, thetaNT, gt`), one fewer than the model's free dimensions even after both RDR

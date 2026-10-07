@@ -1,9 +1,9 @@
 ## Step 2: Monte Carlo. For every condition, independent trio datasets are drawn from the model-implied 7x7 covariance
 ## (mvrnorm, sampling variability included) and f is tested with all three models (conditions.R: testF).
-##   f = 0 conditions (type I error): 10 datasets at n = 2,000 and 10 at n = 10,000
-##   f > 0 conditions (power):        10 datasets at n = 10,000
-## Ten datasets per cell is a finite-sample check only: the precise expected rejection rates come from the
-## population noncentrality in 01_population_lrt.R.
+##   f = 0 conditions (type I error): 50 datasets at n = 2,000 and 50 at n = 10,000
+##   f > 0 conditions:                50 datasets at n = 10,000
+## The Monte Carlo is a finite-sample check: the precise expected rejection rates come from the population
+## noncentrality in 01_population_lrt.R.
 ## One CSV per dataset in output/mc/fits/ (resumable: finished datasets are skipped); all rows are then combined into
 ## output/mc_results.csv.
 ## Run with: Rscript 02_monte_carlo.R [--workers 3] [--scale 1]   (--scale multiplies the numbers of datasets)
@@ -29,8 +29,8 @@ source(file.path(baseDir, "conditions.R"))
 fitDir <- file.path(baseDir, "output", "mc", "fits"); dir.create(fitDir, recursive = TRUE, showWarnings = FALSE)
 tmpDir <- file.path(baseDir, "output", "mc", "tmp");  dir.create(tmpDir, recursive = TRUE, showWarnings = FALSE)
 
-design <- rbind(data.frame(f = 0, n = 2000, reps = 10), data.frame(f = 0, n = 10000, reps = 10),
-                data.frame(f = F_VALUES[F_VALUES > 0], n = 10000, reps = 10))
+design <- rbind(data.frame(f = 0, n = 2000, reps = 50), data.frame(f = 0, n = 10000, reps = 50),
+                data.frame(f = F_VALUES[F_VALUES > 0], n = 10000, reps = 50))
 design$reps <- round(design$reps * scale)
 tasks <- rbindlist(lapply(seq_len(nrow(GRID)), function(i){
     d <- design[design$f == GRID$f[i], ]

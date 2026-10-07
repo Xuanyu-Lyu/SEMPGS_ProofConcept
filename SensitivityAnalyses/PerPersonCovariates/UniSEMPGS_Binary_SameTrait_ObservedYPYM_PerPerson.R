@@ -1,5 +1,7 @@
-## PROTOTYPE of OpenMxScripts/EquilibriumBinary/UniSEMPGS_Binary_SameTrait_ObservedYPYM.R with per-person covariates.
-## Only the covariate handling differs from that script (the `covars` argument and the covariate block).
+## REFERENCE COPY for test_per_person_covariates.R: the prototype of per-person covariates, which also still accepts the
+## earlier family-level form (a character vector: every covariate on every variable). The production scripts now take
+## the per-person list only. Apart from the covariate handling it is OpenMxScripts/EquilibriumBinary/
+## UniSEMPGS_Binary_SameTrait_ObservedYPYM.R as of Oct 2026.
 ##
 ## Univariate SEM-PGS model: the same trait in parents and offspring, parental phenotypes observed.
 ## Equilibrium: assortative mating and vertical transmission have gone on for many generations.

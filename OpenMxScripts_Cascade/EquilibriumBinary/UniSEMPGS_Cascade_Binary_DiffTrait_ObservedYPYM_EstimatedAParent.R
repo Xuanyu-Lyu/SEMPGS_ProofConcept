@@ -23,7 +23,10 @@
 ##               Other columns (e.g. covariates) may be present.
 ##               Each haplotypic PGS is assumed to have variance k = .5 in the base population.
 ##   h2_RDR_offspring  RDR heritability of the offspring trait; identifies a_o
-##   covars      optional names of covariate columns; they shift the PGS means and the thresholds
+##   covars      optional covariates, each applied only to the person it belongs to: a named list from data variables
+##               to that person's covariate columns, e.g. list(Yp1 = "age_p", Ym1 = "age_m", Yo1 = c("age_o", "sex_o"),
+##               Tp1 = "PC1_p", NTp1 = "PC1_p", Tm1 = "PC1_m", NTm1 = "PC1_m"). A covariate shifts the threshold or PGS
+##               mean of only the variables it is listed under; variables not listed get no covariates.
 ##   AM_G_value, AM_G_free, AM_E_value, AM_E_free  multipliers on the genetic (AM_G) and the F + E (AM_E) paths into
 ##               gamma~: (1, 1) primary phenotypic AM, (1, 0) genetic homogamy, (0, 1) social homogamy. At least one
 ##               must be fixed. Default: AM_E fixed at 1, AM_G estimated (for genetic homogamy fix AM_G = 1, free AM_E).
@@ -45,10 +48,19 @@ fitUniSEMPGS_Cascade_Binary_DiffTrait_ObservedYPYM_EstimatedAParent <- function(
     obs_vars    <- c("Yp1", "Ym1", "Yo1", "Tp1", "NTp1", "Tm1", "NTm1")   # extra columns (e.g. covariates) are allowed
     binary_vars <- c("Yp1", "Ym1", "Yo1")
     for (v in binary_vars) Example_Data[[v]] <- mxFactor(Example_Data[[v]], levels = c(0, 1))
-    if (length(covars) > 0) {
-        missing_cov <- setdiff(covars, colnames(Example_Data))
+    # covars: a named list from data variables to that person's own covariate columns (see the header); each covariate
+    # adjusts only the variables it is listed under
+    if (length(covars) > 0 && (!is.list(covars) || is.null(names(covars)) || any(names(covars) == "")))
+        stop("covars must be a named list from data variables to that person's covariate columns, e.g. ",
+             "list(Yo1 = c(\"age_o\", \"sex_o\"), Tp1 = \"PC1_p\", NTp1 = \"PC1_p\")")
+    badVar <- setdiff(names(covars), obs_vars)
+    if (length(badVar) > 0) stop("covars names must be data variables (", paste(obs_vars, collapse = ", "), "): ",
+                                 paste(badVar, collapse = ", "))
+    covCols <- unique(unlist(covars, use.names = FALSE))
+    if (length(covCols) > 0) {
+        missing_cov <- setdiff(covCols, colnames(Example_Data))
         if (length(missing_cov) > 0) stop("Covariate column(s) not found in data: ", paste(missing_cov, collapse = ", "))
-        Example_Data <- Example_Data[complete.cases(Example_Data[, covars, with = FALSE]), ]
+        Example_Data <- Example_Data[complete.cases(Example_Data[, covCols, with = FALSE]), ]
     }
 
     # 1. Phenotypic and Residual Variances (Separated)
@@ -149,21 +161,25 @@ fitUniSEMPGS_Cascade_Binary_DiffTrait_ObservedYPYM_EstimatedAParent <- function(
     # Means: fixed at 0 for the binary phenotypes (identification requires fixing either the mean
     # or the threshold; we fix the mean and let the threshold float), free for the continuous PGS.
     # Each observed phenotype gets its own free threshold.
-    # Covariates (if any) enter as definition variables, as in r2_omx_partial(): every PGS mean
-    # becomes mean + sum(b * covar) and every threshold becomes t0 + sum(g * covar).
+    # Covariates (if any) enter as definition variables, as in r2_omx_partial(): a PGS mean becomes mean + sum(b * covar)
+    # and a threshold becomes t0 + sum(g * covar), over the covariates covars lists for that variable; every other
+    # covariate-variable effect is fixed at 0.
     Means0 <- mxMatrix(type = "Full", nrow = 1, ncol = 7, free = c(F, F, F, T, T, T, T), values = 0,
         label = c("meanYp1", "meanYm1", "meanYo1", "meanTp1", "meanNTp1", "meanTm1", "meanNTm1"),
         dimnames = list(NULL, obs_vars), name = "Means0")
     Th0 <- mxMatrix(type = "Full", nrow = 1, ncol = 3, free = TRUE, values = 0,
         labels = c("thresh_Yp11", "thresh_Ym11", "thresh_Yo11"), name = "Th0")
-    if (length(covars) > 0) {
-        nCov   <- length(covars)
-        isCont <- !(obs_vars %in% binary_vars)
-        defCov <- mxMatrix(type = "Full", nrow = 1, ncol = nCov, free = FALSE, labels = paste0("data.", covars), name = "defCov")
-        bCov   <- mxMatrix(type = "Full", nrow = nCov, ncol = length(obs_vars), free = matrix(isCont, nCov, length(obs_vars), byrow = TRUE),
-            values = 0, labels = outer(covars, obs_vars, function(cv, vr) ifelse(vr %in% binary_vars, NA, paste0("b_", vr, "_", cv))), name = "bCov")
-        gCov   <- mxMatrix(type = "Full", nrow = nCov, ncol = length(binary_vars), free = TRUE, values = 0,
-            labels = outer(covars, binary_vars, function(cv, vr) paste0("g_", vr, "_", cv)), name = "gCov")
+    if (length(covCols) > 0) {
+        nCov   <- length(covCols)
+        uses   <- matrix(sapply(obs_vars, function(vr) covCols %in% covars[[vr]]), nrow = nCov,
+                         dimnames = list(covCols, obs_vars))                 # does covariate i adjust variable v?
+        bFree  <- uses & matrix(!(obs_vars %in% binary_vars), nCov, length(obs_vars), byrow = TRUE)
+        gFree  <- uses[, binary_vars, drop = FALSE]
+        defCov <- mxMatrix(type = "Full", nrow = 1, ncol = nCov, free = FALSE, labels = paste0("data.", covCols), name = "defCov")
+        bCov   <- mxMatrix(type = "Full", nrow = nCov, ncol = length(obs_vars), free = bFree, values = 0,
+            labels = ifelse(bFree, outer(covCols, obs_vars, function(cv, vr) paste0("b_", vr, "_", cv)), NA), name = "bCov")
+        gCov   <- mxMatrix(type = "Full", nrow = nCov, ncol = length(binary_vars), free = gFree, values = 0,
+            labels = ifelse(gFree, outer(covCols, binary_vars, function(cv, vr) paste0("g_", vr, "_", cv)), NA), name = "gCov")
         Means   <- mxAlgebra(Means0 + defCov %*% bCov, dimnames = list(NULL, obs_vars), name = "expMeans")
         Th      <- mxAlgebra(Th0 + defCov %*% gCov, name = "Th")
         CovObjs <- list(Means0, Th0, defCov, bCov, gCov)
