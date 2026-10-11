@@ -7,8 +7,9 @@ with the τµ terms, the cross-mate covariances S_A µ S_C, and cov(Yo, Y\*). Th
 cross-mate algebra is also correct: Part IV §15–17 and §19. The simulation matches all of them within a few percent
 (`Validation/03_results.ipynb`).
 
-The errors concern the **offspring of the first assortative mating** (disequilibrium), and three entries of the
-Supp. Table II transcription.
+The errors concern the **offspring of the first assortative mating** (disequilibrium), the offspring of a change
+in assortment strength (Part VII, error 5), and three entries of the Supp. Table II transcription. Part VII's
+parental and cross-mate algebra (§34–37) is correct (`Validation/AMChange/`).
 
 ## Notation used below
 
@@ -112,13 +113,43 @@ Univariate simulation, primary AM:
 Part VI §31's `Ω_p/m,2 = 2a·i_c,2 + 2δ·g_c,2 + δk + ½w` (and hence `VY_p/m,2`) also has the §18 double count. There, gc,2
 = ½(gt + gtᵀ) and ic,2 are cross-parent covariances, so their coefficients should be 1, and w should be w_o.
 
-### 5. Parts VII §38 and VIII §46 (two-regime disequilibrium): same forms, not checked
+### 5. Parts VII §38 and VIII §46 (two-regime disequilibrium): the inherited cis covariance is dropped
 
-These parts reuse §18's Ω₂, Γ₂, θNT,₂ and VY₂ (VIII §46: Part VI's) with generation-1 parents at a µ₀ equilibrium.
-Those parents carry within-haplotype and cis AM covariance. The generation-2 haplotype variance is then k plus an
-inherited term, not k + g₂, and the correct expressions interpolate between error 1 (µ₀ = 0) and Part III (µ₀ = µ₁).
+These parts reuse §18's Ω₂, Γ₂, θNT,₂ and VY₂ (VIII §46: Part VI's), with generation-1 parents at a µ₀ equilibrium.
+§35 correctly gives those parents the cis covariance gc,₁ = Ω̃₁²µ₀ (and hc,₁, ic,₁). A parent's gamete keeps that
+covariance: each locus comes from either of the parent's haplotypes, so var(Tp) = k + gc,₁ and cov(Tp, NTp) = gc,₁.
+§38 instead uses the new trans covariance g₂ = Ω̃₁²µ₁ twice and drops gc,₁. Per data column, with g₂, h₂, i₂ from §36:
 
-The printed forms are exact only when µ₀ = µ₁. They were **not** simulated here.
+| Quantity | PDF §38 | Correct |
+|---|---|---|
+| var(Tp), cov(Tp, NTp) | k, 0 (implicit) | k + gc,₁, gc,₁ |
+| θNT per haplotype | 2δg₂ + 2a·i₂ + ½w₂ | **δ(gc,₁ + g₂) + a(ic,₁ + i₂) + ½w₂** |
+| θT per haplotype | δk + θNT | δk + θNT, with the corrected θNT |
+| VY₂ | 2aΓ₂ + 2δΩ₂ + av₂ + δw₂ + VF₂ + Vε with §18's Ω₂, Γ₂ | **2δ²(k + gc,₁ + g₂) + 2a²(j + hc,₁ + h₂) + 4aδ(ic,₁ + i₂) + 2δw₂ + 2av₂ + VF₂ + Vε** |
+
+The corrected forms reduce to error 1's corrections at µ₀ = 0 and to Part III at µ₀ = µ₁. The printed forms are
+exact only at µ₀ = µ₁, where gc,₁ = g₂. §36–37 (g₂, h₂, i₂, the cross-mate covariances), §38's w₂, v₂, VF₂ and
+cov(Yo, Y\*) are **correct**. Part VIII §46 has the same omission in matrix form (the offspring's cis input should be
+g_c,1 plus the new trans term); it was not implemented or simulated.
+
+Simulation check (`Validation/AMChange/`): 12 GeneEvolve populations per cell; grandparents at a γ̃ correlation of .4
+until equilibrium, then the parents mate once at .2, 0 or .6. Per haplotype; sim = mean ± SE:
+
+| Parents' AM | Mechanism | Quantity | PDF §38 | Corrected | GeneEvolve |
+|---|---|---|---|---|---|
+| weaker (.2) | primary | θNT | 0.085 | 0.101 | 0.098 ± 0.002 |
+| weaker (.2) | primary | VY₂ | 0.905 | 0.932 | 0.943 ± 0.008 |
+| weaker (.2) | genetic | θNT | 0.116 | 0.143 | 0.141 ± 0.002 |
+| weaker (.2) | genetic | VY₂ | 0.872 | 0.916 | 0.920 ± 0.005 |
+| stopped (0) | primary | θNT | 0.045 | 0.076 | 0.077 ± 0.003 |
+| stopped (0) | genetic | θNT | 0.052 | 0.106 | 0.106 ± 0.003 |
+| stopped (0) | genetic | VY₂ | 0.743 | 0.832 | 0.827 ± 0.006 |
+| stronger (.6) | primary | θNT | 0.166 | 0.151 | 0.153 ± 0.003 |
+| stronger (.6) | genetic | VY₂ | 1.128 | 1.084 | 1.076 ± 0.008 |
+| all | primary, genetic | var(Tp) | 0.500 | 0.536, 0.567 | 0.536–0.537, 0.565–0.566 |
+
+All 180 moment comparisons agree with the corrected forms (max |z| 3.2). Under social homogamy gc,₁ ≈ .001, so the
+two forms barely differ there.
 
 ## Related, but not PDF errors (the original OpenMx DisEq scripts)
 

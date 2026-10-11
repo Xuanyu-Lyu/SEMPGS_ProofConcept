@@ -19,7 +19,9 @@ is unchanged from the corresponding original script.
 | `Disequilibrium/` | `00-UniIterativeMath_Cascade_DisEq.R` | `UniSEMPGS_Cascade_DisEq_*.R` (same five designs) |
 | `EquilibriumBinary/` | `00-UniIterativeMath_Cascade_Binary.R` | `UniSEMPGS_Cascade_Binary_*.R` |
 | `DisequilibriumBinary/` | `00-UniIterativeMath_Cascade_DisEq_Binary.R` | `UniSEMPGS_Cascade_DisEq_Binary_*.R` |
-| `Validation/` | the tests: GeneEvolve simulation, fits, and `03_results.ipynb` | |
+| `DisequilibriumAMChange/` | `00-UniIterativeMath_Cascade_AMChange.R` | `UniSEMPGS_Cascade_AMChange_*.R` (the five designs and Model 1) |
+| `DisequilibriumAMChangeBinary/` | `00-UniIterativeMath_Cascade_AMChange_Binary.R` | `UniSEMPGS_Cascade_AMChange_Binary_*.R` |
+| `Validation/` | the tests: GeneEvolve simulation, fits, and `03_results.ipynb` (`Validation/AMChange/`: the AMChange tests) | |
 
 Function names are the originals with `Cascade_` inserted. For example,
 `fitUniSEMPGS_SameTrait_ObservedYPYM` becomes `fitUniSEMPGS_Cascade_SameTrait_ObservedYPYM`. The arguments are
@@ -120,6 +122,111 @@ The continuous scripts take their starting values from the sample moments (δ fr
 var(Yo)), as the original Model 1 scripts do; with fixed starts the default search can stop at a far-off point
 (`OpenMxScripts/ConceptProof.md` §5).
 
+## Change in assortment strength (AMChange)
+
+`DisequilibriumAMChange/` and `DisequilibriumAMChangeBinary/` implement PDF Part VII: assortative mating was going on
+before the parents, but its strength changed in the parents' own mating. Three generations are involved:
+
+* **`_pp`, the grandparents** and every generation before them, mated on γ̃ with copath `mu_pp` long enough to
+  reach the Part III equilibrium.
+* **`_p`, the parents**, are an ordinary member of that equilibrium population. They mate once, on the same γ̃
+  (same AM_G and AM_E), with their own copath `mu_p`.
+* **`_o`, the offspring**, are the first generation formed under `mu_p`.
+
+`mu_pp = 0` is the Disequilibrium model and `mu_pp = mu_p` the Equilibrium model. Both are nested, and the scripts
+reproduce them exactly (below). The six designs, their data columns and their arguments are those of the other
+folders. Function names insert `AMChange_` (and `Binary_`), e.g. `fitUniSEMPGS_Cascade_AMChange_SameTrait_ObservedYPYM`.
+The SameTrait_LatentYPYM file defines `fitUniSEMPGS_Cascade_AMChange_SameTrait_LatentParents`, as in the other folders.
+
+| Quantity | Labels / names in the scripts | Model |
+|---|---|---|
+| Parents (the Eq fixed point at `mu_pp`) | free, held by constraints: `VY_p11`, `VF_p11`, `Omega_p11`, `Gamma_p11`, `w_p11`, `v_p11`, `gc_p11`, `hc_p11`, `ic_p11` | Part III §8–11 at µ_pp. `Omega_td_p`, `Gamma_td_p`, `zeta_p`, `tau_p`, `Vgamma_p` are the parents' shortcuts to γ̃ |
+| The grandparents' mating | `mu_pp11`; algebras `gt_pp`, `ht_pp`, `it_pp` | gt_pp = Ω̃_p²µ_pp, held equal to the parents' cis covariance gc_p (and hc_p, ic_p) |
+| The parents' mating | `mu_p11`; algebras `gt_p`, `ht_p`, `it_p`, `Yp_Ym`, `Yp_PGSm` | gt_p = Ω̃_p²µ_p, cov(Yp, Ym) = τ_p²µ_p, cov(Yp, [N]Tm) = τ_pµ_pΩ̃_p |
+| The offspring's F | `w_o`, `v_o`, `VF_o` | 2f(Ω_p + τ_pµ_pΩ̃_p), 2f(Γ_p + τ_pµ_pΓ̃_p), 2f²(VY_p + τ_p²µ_p) |
+| θ per data column | `thetaNT`, `thetaT` | δ(gc_p + gt_p) + a(ic_p + it_p) + ½w_o, and δk + θNT |
+| The offspring's variance | `VY_o_Algebra` | 2δ²(k + gc_p + gt_p) + 2a²(j + hc_p + ht_p) + 4δa(ic_p + it_p) + 2δw_o + 2av_o + VF_o + VE |
+| cov(Yo, Yp) | `Yo_Yp` | δΩ_p + aΓ_p + fVY_p + τ_pµ_p(δΩ̃_p + aΓ̃_p + fτ_p) (PDF §38) |
+| PGS block | | var(Tp) = k + gc_p, cov(Tp, NTp) = gc_p, cov(Tp, Tm) = gt_p |
+
+The offspring rows are derived from Yo = δ(Tp + Tm) + a(LTp + LTm) + Fo + Eo. A parent's transmitted gamete takes each
+locus from either of the parent's haplotypes, so it keeps the cis covariance gc_p the parent inherited. PDF §38 drops
+this term and uses the new trans term gt_p twice instead, which is exact only when µ_pp = µ_p
+(`PDF_Errata.md`, error 5). In the DiffTrait designs, θ, VY_o and `Yo_Yp` use the offspring trait's δ_o, a_o and VE_o.
+
+**What identifies the two copaths.** µ_pp is identified mainly by the parents' cis covariance gc_p = cov(Tp, NTp),
+and µ_p by gt_p = cov(Tp, Tm) (and, with observed parents, by cov(Yp, Ym)). Compared with the DisEq scripts the model
+adds one parameter (µ_pp) and one moment (gc_p), so the latent designs stay just-identified. Design notes:
+
+* **`DiffTrait_LatentYPYM`** needs one of `mu_p_fixed` and `mu_pp_fixed`. gc_p and gt_p fix only Ω̃_p²µ_pp and
+  Ω̃_p²µ_p, so one copath must pin Ω̃_p, as `mu_fixed` does in the DisEq script. Supply `mu_p_fixed` unless the
+  parents mate at random (µ_p = 0), where gt_p = 0 says nothing about Ω̃_p; then supply `mu_pp_fixed`.
+* **If the parents mate at random (µ_p ≈ 0)**, nothing in the data shows what spouses assorted on, so fix the
+  mechanism (AM_G and AM_E) even with observed parents. In the DiffTrait_ObservedYPYM designs a free AM_G then
+  trades off against µ_pp at no cost in fit: AM_G = −0.04 with µ_pp = 75 fit the exact data as well as the truth
+  (AM_G = 1, µ_pp = .4).
+* **Under social homogamy µ_pp is close to unidentified.** The grandparents' assortment leaves gc_p ≈ .001 in the
+  genotypes, its only direct trace, so µ_pp has SEs near 1 and wanders by ±.1–.4 between fits that match the truth.
+  With a free AM_G (the observed-parent designs) Ω̃_p ≈ ½w can also be cancelled. In one binary
+  DiffTrait_ObservedYPYM_EstimatedAParent coding check, AM_G = −0.17 brought Ω̃_p to ≈ .01 and µ_pp ran off to 16
+  (NaN SEs). The latent-parent designs are weakly identified under social homogamy, as in the Eq and DisEq scripts.
+
+**Differences from the conventions of the other folders.**
+
+* SameTrait_ObservedYPYM constrains Omega_p and gc_p, which the Eq script, copied from the original, leaves free.
+  Here gc_p carries µ_pp.
+* The continuous scripts take their starting values from the sample moments (VY_p, Omega_p, gc_p, δ), like the
+  Model 1 scripts.
+* Data columns other than the design's are ignored, so their order does not matter.
+
+**Iterative math.** `uniIterativeMath_Cascade_AMChange(delta, a, f, VE, am_pp, am_p, AM_G, AM_E)` runs the Part III
+recursion at the grandparents' spousal γ̃ correlation `am_pp` to convergence, then the parents' one mating at `am_p`.
+µ_pp = am_pp/Vγ̃_p and µ_p = am_p/Vγ̃_p. It returns every `_pp`, `_p` and `_o` quantity, and `$pdf_partVII` (§38 as
+printed, for comparison only). `checkCascadeAMChangeConsistency()` asserts the scripts' constraint algebra, and
+`diffTraitOffspring_Cascade_AMChange()` gives the DiffTrait offspring trait. The binary file adds
+`uniIterativeMath_Cascade_AMChange_Binary()` (VY_p = 1) and `solve_VYo_Cascade_AMChange_Binary()`.
+
+**Validation (`Validation/AMChange/`).** Generating values: BASE and the three mechanisms of `Validation/conditions.R`,
+rescaled to VY_p = 1. The grandparents' spousal γ̃ correlation is .4, and the parents' is .2 (`weaker`, the main
+condition), 0 (`stopped`) or .6 (`stronger`). GeneEvolve: 12 populations per mechanism, each 30 generations at .4 and
+then branched into the three parental matings (~48,700 trios per cell). Results are in
+`Validation/AMChange/output/results/summary_*.csv`:
+
+* **Algebra.** At am_pp = 0 the math equals the DisEq math, and at am_pp = am_p the Eq math (max difference 4e-13,
+  four mechanisms). Every implied covariance matrix is positive definite.
+* **Moments (GeneEvolve vs the math).** All 180 comparisons agree: 20 moments × 3 branches × 3 mechanisms, max
+  |z| 3.2. These include the PGS block (var(Tp) = k + gc_p, cov(Tp, NTp), cov(Tp, Tm)), θ, VY_o, cov(Yo, Yp) and
+  the offspring's w_o and VF_o. The PDF §38 forms miss θNT, θT and VY_o by |z| 4–20 under primary and genetic AM
+  (`PDF_Errata.md`, error 5).
+* **Coding check (exact-covariance data, exhaustive search).** 53 of the 54 continuous fits recover the truth within
+  .006, most within 4e-4. The exception is AM stopped + social homogamy + DiffTrait_Latent (VE_p off by .024, SE ≈ 1).
+  With the scripts' default search, 45 of 54 were within .02: the misses were local optima under social homogamy, and
+  the stopped branch before the mechanism was fixed.
+  Binary (main condition, n = 50,000, default search): 16 of 18 fits pass (max |z| ≤ 2.6, or within .05). Both
+  flags are DiffTrait_ObservedYPYM_EstimatedAParent, which was also the noisiest binary design before
+  (`OpenMxScripts/ConceptProof.md` §5). Under genetic homogamy AM_E is .10 off, with NaN SEs for 9 parameters. Under
+  social homogamy µ_pp runs off (above). The primary-AM SameTrait_ObservedYPYM fit missed AM_G and both copaths by
+  2.1–2.6 SE. On three more datasets (`--seed 11`–`13`) every parameter's mean z over the four fits lies between
+  −0.6 and 0.7. The primary-AM DiffTrait_ObservedYPYM_FixedAParent fit was rerun with `--extraTries 2` (max
+  error .005, OpenMx status 6) after the default search ran for two hours.
+* **Nesting.** On the Eq and DisEq coding-check data, all 30 continuous AMChange fits reach the −2LL of the
+  corresponding Eq or DisEq script (within 3e-4). They return µ_pp = µ (Eq) or 0 (DisEq) and recover every other
+  parameter within .007. The exception is DiffTrait_Latent under social homogamy on the DisEq data: the −2LL matches,
+  but the parental-trait parameters sit .09 away on a flat ridge (NaN SEs).
+* **GeneEvolve fits (continuous, 45 fits, exhaustive search).** A likelihood-ratio test never rejects the truth
+  (all parameters at their true values vs the fit): p ≥ .09 in every fit. Both copaths are recovered: under primary
+  AM, µ_pp = .39–.47 (truth .40) and µ_p = .18–.22 (truth .20) in the main condition, and µ_p = .60–.63 (truth .60)
+  in the `stronger` one. The Wald z of single parameters is less trustworthy. SameTrait_ObservedYPYM reports NaN or
+  too-small SEs for several parameters (|z| up to 28 for AM_G = 1.017, truth 1). Under social homogamy the estimates
+  wander along the weakly identified directions (with p_truth ≥ .14). Use likelihood-based intervals (`mxCI`) or a
+  bootstrap with these scripts, as recommended for the DisEq SameTrait_Observed script
+  (`OpenMxScripts/ConceptProof.md` §5).
+* **GeneEvolve fits (binary, main condition).** Six fits: SameTrait_Latent, DiffTrait_Latent and
+  SameTrait_Observed under primary and genetic AM, all with max |z| ≤ 2.4. The binary DiffTrait_ObservedYPYM
+  GeneEvolve fits were not run. With ~48,700 trios one optimizer attempt takes 10–25 min, and the default search
+  (`extraTries = 30`) had not stopped after an hour. Their algebra is that of the continuous scripts, checked on the
+  same data, and their binary coding is checked by the coding check above.
+
 ## Iterative math
 
 * `uniIterativeMath_Cascade()` (Eq) iterates PDF Part III from a random-mating, no-VT generation 0 (the same
@@ -156,6 +263,17 @@ Rscript 06_replicate_eq_social.R                   # ... and their fits
 Rscript 07_original_diseq_check.R                  # the corrected ORIGINAL DisEq script on GeneEvolve data
 Rscript 08_model1.R --workers 3                    # the Cascade Model 1 scripts (output/model1)
 jupyter nbconvert --to notebook --execute --inplace 03_results.ipynb
+# the AMChange (change in assortment strength) scripts
+cd AMChange
+Rscript 00_truth.R                                 # reductions to the Eq/DisEq math, truth, generating values
+python 01_simulate.py --reps 12 --workers 3        # GeneEvolve: am_pp = .4 history, then am_p = .2 / 0 / .6
+Rscript 02_fit_models.R --mode mvn                 # coding check: 54 continuous (all branches) + 18 binary (main branch)
+Rscript 02_fit_models.R --mode mvn --binary 1 --mech primary --design SameTrait_ObservedYPYM --seed 11   # also 12, 13
+Rscript 02_fit_models.R --mode reduction           # the AMChange scripts on the Eq/DisEq exact data (needs ../ mvn run)
+Rscript 02_fit_models.R --mode sim --binary 0 --branch all     # 45 continuous GeneEvolve fits
+Rscript 02_fit_models.R --mode sim --binary 1 --mech primary,genetic \
+    --design SameTrait_LatentYPYM,DiffTrait_LatentYPYM,SameTrait_ObservedYPYM   # 6 binary GeneEvolve fits
+Rscript 03_summary.R                               # all tables -> output/results/summary_*.csv
 ```
 
 `03_results.ipynb` holds all test results. Every table and figure has a note on how to read it:
