@@ -1,0 +1,315 @@
+Warning message:
+package ‘data.table’ was built under R version 4.4.1 
+A. Moments: GeneEvolve (mean over 12 populations) vs the scripts' math
+     branch mechanism     n max_abs_z   worst max_rel_pct
+     <fctr>    <fctr> <int>     <num>  <char>       <num>
+1:   weaker   primary    20      1.29 thetaNT         9.5
+2:   weaker   genetic    20      3.24 Yp_PGSm         6.6
+3:   weaker    social    20      2.05    mu_p         4.3
+4:  stopped   primary    20      0.94 Yp_PGSm         1.6
+5:  stopped   genetic    20      1.52    gt_p         2.5
+6:  stopped    social    20      1.60   Yp_Ym         5.7
+7: stronger   primary    20      2.63    mu_p         2.2
+8: stronger   genetic    20      1.74  thetaT         1.4
+9: stronger    social    20      1.98   Yo_Yp         5.0
+
+   The quantities PDF Part VII Section 38 also predicts (z = (sim - prediction)/SE):
+Key: <branch, mechanism>
+     branch mechanism z_VY_o z_gc_p z_hapvar z_thetaNT z_thetaT z_pdf38_VY_o z_pdf38_gc_p z_pdf38_hapvar z_pdf38_thetaNT z_pdf38_thetaT
+     <fctr>    <fctr>  <num>  <num>    <num>     <num>    <num>        <num>        <num>          <num>           <num>          <num>
+1:   weaker   primary    1.3    0.9      0.4      -1.3      0.6          4.6         25.3           14.9             5.5            4.8
+2:   weaker   genetic    0.7    0.1     -0.5      -1.1     -0.4          8.8         32.0           20.0            15.0            7.8
+3:   weaker    social    0.4   -0.7      1.9      -0.5      0.4          0.6          0.2            2.7            -0.3            0.6
+4:  stopped   primary    0.3    0.2      0.0       0.1      0.3          7.1         15.1           14.6            11.0            9.8
+5:  stopped   genetic   -0.7    0.1     -0.5       0.1     -1.0         14.4         18.9           26.2            20.5           20.4
+6:  stopped    social    1.4    1.5      1.4       0.9      0.9          1.7          2.2            2.3             1.5            1.4
+7: stronger   primary   -0.8   -0.1     -0.1       0.7     -0.1         -4.5         16.6           19.3            -4.3           -4.7
+8: stronger   genetic   -1.0    0.1     -0.4       0.8     -1.7         -6.4         23.7           25.2            -6.3          -11.1
+9: stronger    social    0.3    1.8      1.9       1.0     -0.2          0.0          2.7            3.1             0.7           -0.6
+
+B. Coding check (exact-covariance data): PASS = max |estimate - truth| <= .02 (continuous); <= .05, or max |z| <= 3
+    with no parameter missing by > .05 without an SE (binary)
+      branch mechanism                                  design      trait               status max_abs_err       worst max_abs_z result time_sec
+      <char>    <char>                                  <char>     <char>               <char>       <num>      <char>     <num> <char>    <num>
+ 1:  stopped   genetic                    DiffTrait_LatentYPYM continuous                   OK     1.4e-04   Gamma_p11      0.01   PASS     56.0
+ 2:  stopped   genetic DiffTrait_ObservedYPYM_EstimatedAParent continuous                   OK     9.2e-05   Gamma_p11      0.01   PASS     99.4
+ 3:  stopped   genetic     DiffTrait_ObservedYPYM_FixedAParent continuous                   OK     1.1e-04   Gamma_p11      0.01   PASS      9.4
+ 4:  stopped   genetic                                  Model1 continuous                   OK     3.5e-05      VY_p11      0.01   PASS      5.2
+ 5:  stopped   genetic                    SameTrait_LatentYPYM continuous                   OK     3.8e-05      VY_p11      0.01   PASS      9.3
+ 6:  stopped   genetic                  SameTrait_ObservedYPYM continuous                   OK     3.3e-05      VY_p11      0.01   PASS      8.6
+ 7:  stopped   primary                    DiffTrait_LatentYPYM continuous                   OK     1.1e-04      VE_p11      0.01   PASS     54.0
+ 8:  stopped   primary DiffTrait_ObservedYPYM_EstimatedAParent continuous                   OK     7.5e-05     mu_pp11      0.01   PASS     45.8
+ 9:  stopped   primary     DiffTrait_ObservedYPYM_FixedAParent continuous                   OK     5.2e-05     mu_pp11      0.01   PASS      9.3
+10:  stopped   primary                                  Model1 continuous                   OK     3.9e-05      VY_p11      0.01   PASS      5.8
+11:  stopped   primary                    SameTrait_LatentYPYM continuous                   OK     8.4e-05     mu_pp11      0.01   PASS      8.0
+12:  stopped   primary                  SameTrait_ObservedYPYM continuous                   OK     5.0e-05     mu_pp11      0.01   PASS      9.2
+13:  stopped    social                    DiffTrait_LatentYPYM continuous                   OK     2.4e-02      VE_p11      0.03   FLAG     47.4
+14:  stopped    social DiffTrait_ObservedYPYM_EstimatedAParent continuous             OK/green     5.4e-03     mu_pp11      0.01   PASS     44.6
+15:  stopped    social     DiffTrait_ObservedYPYM_FixedAParent continuous                   OK     4.8e-03     mu_pp11      0.01   PASS      9.5
+16:  stopped    social                                  Model1 continuous                   OK     1.8e-03     mu_pp11      0.01   PASS      6.3
+17:  stopped    social                    SameTrait_LatentYPYM continuous                   OK     4.9e-03     mu_pp11      0.05   PASS      7.9
+18:  stopped    social                  SameTrait_ObservedYPYM continuous                   OK     5.6e-04     mu_pp11      0.01   PASS      9.0
+19: stronger   genetic                    DiffTrait_LatentYPYM continuous                   OK     1.0e-04   Gamma_p11      0.01   PASS     48.9
+20: stronger   genetic DiffTrait_ObservedYPYM_EstimatedAParent continuous                   OK     3.9e-04  AMEnvMulti      0.01   PASS     38.7
+21: stronger   genetic     DiffTrait_ObservedYPYM_FixedAParent continuous                   OK     1.5e-04  AMEnvMulti      0.01   PASS      9.8
+22: stronger   genetic                                  Model1 continuous             OK/green     4.4e-05      mu_p11      0.01   PASS      5.7
+23: stronger   genetic                    SameTrait_LatentYPYM continuous                   OK     1.1e-04      mu_p11      0.01   PASS      9.0
+24: stronger   genetic                  SameTrait_ObservedYPYM continuous                   OK     1.1e-04      mu_p11      0.01   PASS     11.5
+25: stronger   primary                    DiffTrait_LatentYPYM continuous                   OK     9.5e-05     mu_pp11      0.01   PASS     51.5
+26: stronger   primary DiffTrait_ObservedYPYM_EstimatedAParent continuous                   OK     6.5e-05     mu_pp11      0.01   PASS    100.7
+27: stronger   primary     DiffTrait_ObservedYPYM_FixedAParent continuous             OK/green     7.7e-05     mu_pp11      0.01   PASS     13.0
+28: stronger   primary                                  Model1 continuous                   OK     4.3e-05      VY_p11      0.01   PASS      5.2
+29: stronger   primary                    SameTrait_LatentYPYM continuous                   OK     5.9e-05     mu_pp11      0.01   PASS      8.4
+30: stronger   primary                  SameTrait_ObservedYPYM continuous                   OK     5.5e-05     mu_pp11      0.01   PASS      9.9
+31: stronger    social                    DiffTrait_LatentYPYM continuous                   OK     5.6e-03     mu_pp11      0.00   PASS     40.0
+32: stronger    social DiffTrait_ObservedYPYM_EstimatedAParent continuous                   OK     5.4e-03     mu_pp11      0.01   PASS    982.5
+33: stronger    social     DiffTrait_ObservedYPYM_FixedAParent continuous             OK/green     4.3e-03     mu_pp11      0.00   PASS      9.4
+34: stronger    social                                  Model1 continuous                   OK     1.8e-03     mu_pp11      0.01   PASS      6.8
+35: stronger    social                    SameTrait_LatentYPYM continuous             OK/green     4.8e-03     mu_pp11      0.02   PASS      9.9
+36: stronger    social                  SameTrait_ObservedYPYM continuous             OK/green     4.3e-04     mu_pp11      0.01   PASS      8.9
+37:   weaker   genetic                    DiffTrait_LatentYPYM     binary             OK/green     1.5e-02      VE_p11      0.79   PASS     24.3
+38:   weaker   genetic                    DiffTrait_LatentYPYM continuous             OK/green     3.2e-03   Gamma_p11      0.01   PASS     11.1
+39:   weaker   genetic DiffTrait_ObservedYPYM_EstimatedAParent     binary             OK/green     1.0e-01  AMEnvMulti      2.63   FLAG    803.4
+40:   weaker   genetic DiffTrait_ObservedYPYM_EstimatedAParent continuous                   OK     3.4e-04  AMEnvMulti      0.01   PASS     11.0
+41:   weaker   genetic     DiffTrait_ObservedYPYM_FixedAParent     binary             OK/green     8.8e-03 thresh_Yo11      1.57   PASS    309.1
+42:   weaker   genetic     DiffTrait_ObservedYPYM_FixedAParent continuous                   OK     1.9e-04  AMEnvMulti      0.01   PASS    889.5
+43:   weaker   genetic                                  Model1     binary             OK/green     2.7e-02     mu_pp11      1.39   PASS     17.9
+44:   weaker   genetic                                  Model1 continuous                   OK     3.5e-05      VY_p11      0.01   PASS      5.8
+45:   weaker   genetic                    SameTrait_LatentYPYM     binary                   OK     5.3e-02        VE11      1.80   PASS     21.5
+46:   weaker   genetic                    SameTrait_LatentYPYM continuous                   OK     4.0e-05      VY_p11      0.01   PASS      8.3
+47:   weaker   genetic                  SameTrait_ObservedYPYM     binary             OK/green     6.5e-02  AMEnvMulti      1.08   PASS    439.2
+48:   weaker   genetic                  SameTrait_ObservedYPYM continuous                   OK     1.3e-04  AMEnvMulti      0.01   PASS      8.9
+49:   weaker   primary                    DiffTrait_LatentYPYM     binary             OK/green     2.9e-02      VE_p11      0.97   PASS     32.9
+50:   weaker   primary                    DiffTrait_LatentYPYM continuous                   OK     8.0e-05   Gamma_p11      0.01   PASS      9.7
+51:   weaker   primary DiffTrait_ObservedYPYM_EstimatedAParent     binary             OK/green     8.0e-03      VE_p11      0.69   PASS    533.4
+52:   weaker   primary DiffTrait_ObservedYPYM_EstimatedAParent continuous                   OK     8.4e-05   Gamma_p11      0.01   PASS     11.5
+53:   weaker   primary     DiffTrait_ObservedYPYM_FixedAParent     binary nonzero gradient/red     4.6e-03      VE_p11      0.84   PASS    563.0
+54:   weaker   primary     DiffTrait_ObservedYPYM_FixedAParent continuous                   OK     1.2e-04  AMGenMulti      0.01   PASS    871.0
+55:   weaker   primary                                  Model1     binary             OK/green     7.0e-03       w_p11      0.98   PASS     36.5
+56:   weaker   primary                                  Model1 continuous                   OK     5.0e-05      VY_p11      0.01   PASS     20.2
+57:   weaker   primary                    SameTrait_LatentYPYM     binary                   OK     2.0e-02        VE11      0.54   PASS     19.6
+58:   weaker   primary                    SameTrait_LatentYPYM continuous                   OK     6.5e-05      VY_p11      0.01   PASS     12.5
+59:   weaker   primary                  SameTrait_ObservedYPYM     binary                   OK     1.6e-01  AMGenMulti      2.57   PASS    572.0
+60:   weaker   primary                  SameTrait_ObservedYPYM continuous                   OK     2.3e-04  AMGenMulti      0.01   PASS      9.3
+61:   weaker    social                    DiffTrait_LatentYPYM     binary                   OK     1.1e-01       a_p11      0.55   PASS     57.3
+62:   weaker    social                    DiffTrait_LatentYPYM continuous nonzero gradient/red     5.1e-03     mu_pp11      0.01   PASS     10.0
+63:   weaker    social DiffTrait_ObservedYPYM_EstimatedAParent     binary                   OK     1.5e+01     mu_pp11      1.77   FLAG   3220.4
+64:   weaker    social DiffTrait_ObservedYPYM_EstimatedAParent continuous                   OK     5.5e-03     mu_pp11      0.01   PASS    852.5
+65:   weaker    social     DiffTrait_ObservedYPYM_FixedAParent     binary             OK/green     4.0e-01     mu_pp11      0.75   PASS   1367.6
+66:   weaker    social     DiffTrait_ObservedYPYM_FixedAParent continuous             OK/green     3.6e-03     mu_pp11      0.01   PASS     44.2
+67:   weaker    social                                  Model1     binary             OK/green     6.4e-02     mu_pp11      0.91   PASS     20.6
+68:   weaker    social                                  Model1 continuous                   OK     1.8e-03     mu_pp11      0.01   PASS      7.2
+69:   weaker    social                    SameTrait_LatentYPYM     binary             OK/green     8.6e-02     mu_pp11      0.48   PASS     32.4
+70:   weaker    social                    SameTrait_LatentYPYM continuous                   OK     4.8e-03     mu_pp11      0.01   PASS      8.9
+71:   weaker    social                  SameTrait_ObservedYPYM     binary             OK/green     1.2e-01     mu_pp11      0.76   PASS    432.7
+72:   weaker    social                  SameTrait_ObservedYPYM continuous                   OK     2.4e-04     mu_pp11      0.01   PASS      9.9
+      branch mechanism                                  design      trait               status max_abs_err       worst max_abs_z result time_sec
+
+   Replicate datasets (--seed) of a binary coding check: z per parameter across datasets
+    branch mechanism                 design  trait   parameter datasets mean_z  sd_z max_abs_z
+    <char>    <char>                 <char> <char>      <char>    <int>  <num> <num>     <num>
+ 1: weaker   primary SameTrait_ObservedYPYM binary     delta11        4  -0.59  0.61      1.29
+ 2: weaker   primary SameTrait_ObservedYPYM binary         a11        4  -0.46  0.66      1.40
+ 3: weaker   primary SameTrait_ObservedYPYM binary         f11        4   0.54  0.65      1.43
+ 4: weaker   primary SameTrait_ObservedYPYM binary        VE11        4   0.20  0.75      1.29
+ 5: weaker   primary SameTrait_ObservedYPYM binary  AMGenMulti        4  -0.53  1.42      2.57
+ 6: weaker   primary SameTrait_ObservedYPYM binary     mu_pp11        4   0.40  1.20      2.09
+ 7: weaker   primary SameTrait_ObservedYPYM binary      VF_p11        4   0.54  0.61      1.32
+ 8: weaker   primary SameTrait_ObservedYPYM binary   Omega_p11        4   0.02  0.18      0.25
+ 9: weaker   primary SameTrait_ObservedYPYM binary   Gamma_p11        4  -0.32  0.64      1.27
+10: weaker   primary SameTrait_ObservedYPYM binary       w_p11        4   0.57  0.66      1.45
+11: weaker   primary SameTrait_ObservedYPYM binary       v_p11        4   0.71  0.74      1.65
+12: weaker   primary SameTrait_ObservedYPYM binary      gc_p11        4  -0.02  0.10      0.17
+13: weaker   primary SameTrait_ObservedYPYM binary      hc_p11        4  -0.32  0.59      1.19
+14: weaker   primary SameTrait_ObservedYPYM binary      ic_p11        4  -0.27  0.49      0.99
+15: weaker   primary SameTrait_ObservedYPYM binary      mu_p11        4   0.41  1.44      2.45
+16: weaker   primary SameTrait_ObservedYPYM binary thresh_Yp11        4   0.15  0.28      0.49
+17: weaker   primary SameTrait_ObservedYPYM binary thresh_Ym11        4  -0.02  0.63      0.90
+18: weaker   primary SameTrait_ObservedYPYM binary thresh_Yo11        4  -0.29  1.23      1.46
+
+C. Fits to the pooled GeneEvolve trios: max |z| = |estimate - truth| / SE per fit, and the LR test of the truth
+      branch mechanism                                  design      trait   status     n max_abs_z     worst_z max_abs_err d_m2LL_truth    df p_truth time_sec
+      <char>    <char>                                  <char>     <char>   <char> <int>     <num>      <char>       <num>        <num> <num>   <num>    <num>
+ 1:  stopped   genetic                    DiffTrait_LatentYPYM continuous       OK 48790      1.79      VE_o11      0.0320         5.45     5   0.360     14.1
+ 2:  stopped   genetic DiffTrait_ObservedYPYM_EstimatedAParent continuous       OK 48790      1.57      VE_p11      0.0460         6.00     8   0.650     11.5
+ 3:  stopped   genetic     DiffTrait_ObservedYPYM_FixedAParent continuous       OK 48790      1.67       v_p11      0.0390         5.85     7   0.560     11.9
+ 4:  stopped   genetic                    SameTrait_LatentYPYM continuous       OK 48790      1.67      mu_p11      0.0380         4.13     5   0.530      9.3
+ 5:  stopped   genetic                  SameTrait_ObservedYPYM continuous       OK 48790      4.68     mu_pp11      0.0290         3.56     6   0.740     10.1
+ 6:  stopped   primary                    DiffTrait_LatentYPYM continuous OK/green 48718      0.73   delta_o11      0.0230         2.65     5   0.750     13.7
+ 7:  stopped   primary DiffTrait_ObservedYPYM_EstimatedAParent continuous       OK 48718      1.37      VF_p11      0.0400         5.16     8   0.740     12.1
+ 8:  stopped   primary     DiffTrait_ObservedYPYM_FixedAParent continuous       OK 48718      1.74   delta_o11      0.0061         3.54     7   0.830     11.8
+ 9:  stopped   primary                    SameTrait_LatentYPYM continuous       OK 48718      0.36      VY_p11      0.0050         0.20     5   1.000     11.5
+10:  stopped   primary                  SameTrait_ObservedYPYM continuous       OK 48718      2.28      VF_p11      0.0068         0.90     6   0.990     12.3
+11:  stopped    social                    DiffTrait_LatentYPYM continuous       OK 48547      2.88      mu_p11      0.7900         1.87     5   0.870     13.7
+12:  stopped    social DiffTrait_ObservedYPYM_EstimatedAParent continuous       OK 48547      2.43       v_p11      1.4000        10.88     8   0.210     14.8
+13:  stopped    social     DiffTrait_ObservedYPYM_FixedAParent continuous OK/green 48547      4.66      VF_p11      1.4000        10.88     7   0.140     11.9
+14:  stopped    social                    SameTrait_LatentYPYM continuous       OK 48547      2.99      VY_p11      0.9000         8.08     5   0.150     10.5
+15:  stopped    social                  SameTrait_ObservedYPYM continuous       OK 48547     10.42     mu_pp11      0.0860         7.25     6   0.300     10.2
+16: stronger   genetic                    DiffTrait_LatentYPYM continuous OK/green 48784      0.48      VE_p11      0.0053         0.87     5   0.970     11.7
+17: stronger   genetic DiffTrait_ObservedYPYM_EstimatedAParent continuous       OK 48784      0.42      VY_o11      0.0055         1.07     9   1.000     12.6
+18: stronger   genetic     DiffTrait_ObservedYPYM_FixedAParent continuous       OK 48784      0.48     mu_pp11      0.0110         1.05     8   1.000     14.6
+19: stronger   genetic                    SameTrait_LatentYPYM continuous       OK 48784      2.04     delta11      0.0290         4.59     5   0.470     10.6
+20: stronger   genetic                  SameTrait_ObservedYPYM continuous       OK 48784     25.95      VF_p11      0.0630         5.04     7   0.660     10.6
+21: stronger   primary                    DiffTrait_LatentYPYM continuous       OK 48596      1.06   delta_p11      0.0150         2.72     5   0.740     15.3
+22: stronger   primary DiffTrait_ObservedYPYM_EstimatedAParent continuous       OK 48596      0.90   delta_o11      0.0071         3.58     9   0.940     12.7
+23: stronger   primary     DiffTrait_ObservedYPYM_FixedAParent continuous       OK 48596      0.87   delta_o11      0.0048         3.41     8   0.910     14.1
+24: stronger   primary                    SameTrait_LatentYPYM continuous       OK 48596      1.75       w_p11      0.0300         4.54     5   0.470     11.2
+25: stronger   primary                  SameTrait_ObservedYPYM continuous       OK 48596      1.36        VE11      0.0160         3.80     7   0.800     17.3
+26: stronger    social                    DiffTrait_LatentYPYM continuous       OK 48602      3.54     mu_pp11      1.4000         7.42     5   0.190     14.6
+27: stronger    social DiffTrait_ObservedYPYM_EstimatedAParent continuous OK/green 48602      2.39       v_p11      2.2000        12.34     9   0.190     15.9
+28: stronger    social     DiffTrait_ObservedYPYM_FixedAParent continuous OK/green 48602      5.77       v_p11      2.3000        12.25     8   0.140     12.4
+29: stronger    social                    SameTrait_LatentYPYM continuous       OK 48602      2.08      hc_p11      1.4000         6.57     5   0.250     10.0
+30: stronger    social                  SameTrait_ObservedYPYM continuous       OK 48602      2.97      VY_p11      0.4500         8.86     7   0.260     11.1
+31:   weaker   genetic                    DiffTrait_LatentYPYM     binary OK/green 48723      1.13   delta_o11      0.0210           NA    NA      NA     52.6
+32:   weaker   genetic                    DiffTrait_LatentYPYM continuous       OK 48723      1.87      VY_p11      0.0110         3.25     5   0.660     11.3
+33:   weaker   genetic DiffTrait_ObservedYPYM_EstimatedAParent continuous OK/green 48723      1.94      mu_p11      0.1400         8.79     9   0.460     14.4
+34:   weaker   genetic     DiffTrait_ObservedYPYM_FixedAParent continuous       OK 48723      1.81      VY_o11      0.0470         7.35     8   0.500     12.7
+35:   weaker   genetic                    SameTrait_LatentYPYM     binary OK/green 48723      1.55   Omega_p11      0.0250           NA    NA      NA     22.4
+36:   weaker   genetic                    SameTrait_LatentYPYM continuous OK/green 48723      1.42      VF_p11      0.0240         4.51     5   0.480      9.4
+37:   weaker   genetic                  SameTrait_ObservedYPYM     binary       OK 48723      2.31 thresh_Yp11      0.0920           NA    NA      NA    654.4
+38:   weaker   genetic                  SameTrait_ObservedYPYM continuous       OK 48723      1.32     mu_pp11      0.0200         6.13     7   0.520     11.2
+39:   weaker   primary                    DiffTrait_LatentYPYM     binary OK/green 48848      2.38     mu_pp11      0.1500           NA    NA      NA     59.7
+40:   weaker   primary                    DiffTrait_LatentYPYM continuous       OK 48848      5.49   delta_p11      0.1600         5.11     5   0.400     14.5
+41:   weaker   primary DiffTrait_ObservedYPYM_EstimatedAParent continuous       OK 48848      1.40   delta_o11      0.0790         8.69     9   0.470     11.9
+42:   weaker   primary     DiffTrait_ObservedYPYM_FixedAParent continuous       OK 48848      1.51      VE_p11      0.0730         8.47     8   0.390     13.1
+43:   weaker   primary                    SameTrait_LatentYPYM     binary OK/green 48848      1.27      mu_p11      0.0190           NA    NA      NA     32.7
+44:   weaker   primary                    SameTrait_LatentYPYM continuous       OK 48848      1.64      VY_p11      0.0310         9.45     5   0.092      9.4
+45:   weaker   primary                  SameTrait_ObservedYPYM     binary       OK 48848      1.95  AMGenMulti      0.1200           NA    NA      NA    636.9
+46:   weaker   primary                  SameTrait_ObservedYPYM continuous       OK 48848     27.85  AMGenMulti      0.0220         4.74     7   0.690     11.9
+47:   weaker    social                    DiffTrait_LatentYPYM continuous OK/green 48527     47.99         f11      0.8100         3.54     5   0.620     20.0
+48:   weaker    social DiffTrait_ObservedYPYM_EstimatedAParent continuous OK/green 48527      1.76      VY_p11      0.6200         7.16     9   0.620     11.8
+49:   weaker    social     DiffTrait_ObservedYPYM_FixedAParent continuous OK/green 48527      4.89       v_p11      0.6100         6.95     8   0.540     12.9
+50:   weaker    social                    SameTrait_LatentYPYM continuous       OK 48527      4.35      gc_p11      0.5700         2.49     5   0.780      9.2
+51:   weaker    social                  SameTrait_ObservedYPYM continuous       OK 48527      5.43      VY_p11      0.2400         5.36     7   0.620     10.9
+      branch mechanism                                  design      trait   status     n max_abs_z     worst_z max_abs_err d_m2LL_truth    df p_truth time_sec
+
+   mu_pp and mu_p across the GeneEvolve fits:
+      branch mechanism                                  design      trait parameter estimate  true      z
+      <char>    <char>                                  <char>     <char>    <char>    <num> <num>  <num>
+ 1:  stopped   genetic                    DiffTrait_LatentYPYM continuous    mu_p11   -0.032 0.000  -1.65
+ 2:  stopped   genetic DiffTrait_ObservedYPYM_EstimatedAParent continuous   mu_pp11    0.869 0.905  -1.26
+ 3:  stopped   genetic DiffTrait_ObservedYPYM_EstimatedAParent continuous    mu_p11   -0.006 0.000  -0.51
+ 4:  stopped   genetic     DiffTrait_ObservedYPYM_FixedAParent continuous   mu_pp11    0.878 0.905  -1.51
+ 5:  stopped   genetic     DiffTrait_ObservedYPYM_FixedAParent continuous    mu_p11   -0.007 0.000  -0.64
+ 6:  stopped   genetic                    SameTrait_LatentYPYM continuous   mu_pp11    0.867 0.905  -1.33
+ 7:  stopped   genetic                    SameTrait_LatentYPYM continuous    mu_p11   -0.031 0.000  -1.67
+ 8:  stopped   genetic                  SameTrait_ObservedYPYM continuous   mu_pp11    0.934 0.905   4.68
+ 9:  stopped   genetic                  SameTrait_ObservedYPYM continuous    mu_p11   -0.011 0.000  -1.56
+10:  stopped   primary                    DiffTrait_LatentYPYM continuous    mu_p11   -0.002 0.000  -0.11
+11:  stopped   primary DiffTrait_ObservedYPYM_EstimatedAParent continuous   mu_pp11    0.404 0.400   0.33
+12:  stopped   primary DiffTrait_ObservedYPYM_EstimatedAParent continuous    mu_p11    0.002 0.000   0.39
+13:  stopped   primary     DiffTrait_ObservedYPYM_FixedAParent continuous   mu_pp11    0.404 0.400   0.37
+14:  stopped   primary     DiffTrait_ObservedYPYM_FixedAParent continuous    mu_p11    0.002 0.000   0.39
+15:  stopped   primary                    SameTrait_LatentYPYM continuous   mu_pp11    0.401 0.400   0.07
+16:  stopped   primary                    SameTrait_LatentYPYM continuous    mu_p11   -0.001 0.000  -0.11
+17:  stopped   primary                  SameTrait_ObservedYPYM continuous   mu_pp11    0.402 0.400     NA
+18:  stopped   primary                  SameTrait_ObservedYPYM continuous    mu_p11    0.002 0.000   0.56
+19:  stopped    social                    DiffTrait_LatentYPYM continuous    mu_p11   -0.788 0.000  -2.88
+20:  stopped    social DiffTrait_ObservedYPYM_EstimatedAParent continuous   mu_pp11    2.302 0.891   2.08
+21:  stopped    social DiffTrait_ObservedYPYM_EstimatedAParent continuous    mu_p11   -0.029 0.000  -1.68
+22:  stopped    social     DiffTrait_ObservedYPYM_FixedAParent continuous   mu_pp11    2.299 0.891   2.19
+23:  stopped    social     DiffTrait_ObservedYPYM_FixedAParent continuous    mu_p11   -0.029 0.000  -1.75
+24:  stopped    social                    SameTrait_LatentYPYM continuous   mu_pp11    1.792 0.891   1.26
+25:  stopped    social                    SameTrait_LatentYPYM continuous    mu_p11   -0.526 0.000  -0.96
+26:  stopped    social                  SameTrait_ObservedYPYM continuous   mu_pp11    0.805 0.891 -10.42
+27:  stopped    social                  SameTrait_ObservedYPYM continuous    mu_p11   -0.026 0.000  -5.29
+28: stronger   genetic                    DiffTrait_LatentYPYM continuous   mu_pp11    0.900 0.905  -0.32
+29: stronger   genetic DiffTrait_ObservedYPYM_EstimatedAParent continuous   mu_pp11    0.900 0.905  -0.39
+30: stronger   genetic DiffTrait_ObservedYPYM_EstimatedAParent continuous    mu_p11    1.352 1.357  -0.26
+31: stronger   genetic     DiffTrait_ObservedYPYM_FixedAParent continuous   mu_pp11    0.899 0.905  -0.48
+32: stronger   genetic     DiffTrait_ObservedYPYM_FixedAParent continuous    mu_p11    1.350 1.357  -0.35
+33: stronger   genetic                    SameTrait_LatentYPYM continuous   mu_pp11    0.894 0.905  -1.10
+34: stronger   genetic                    SameTrait_LatentYPYM continuous    mu_p11    1.348 1.357  -0.29
+35: stronger   genetic                  SameTrait_ObservedYPYM continuous   mu_pp11    0.947 0.905   4.86
+36: stronger   genetic                  SameTrait_ObservedYPYM continuous    mu_p11    1.413 1.357     NA
+37: stronger   primary                    DiffTrait_LatentYPYM continuous   mu_pp11    0.389 0.400  -0.80
+38: stronger   primary DiffTrait_ObservedYPYM_EstimatedAParent continuous   mu_pp11    0.396 0.400  -0.24
+39: stronger   primary DiffTrait_ObservedYPYM_EstimatedAParent continuous    mu_p11    0.596 0.600  -0.28
+40: stronger   primary     DiffTrait_ObservedYPYM_FixedAParent continuous   mu_pp11    0.396 0.400  -0.19
+41: stronger   primary     DiffTrait_ObservedYPYM_FixedAParent continuous    mu_p11    0.596 0.600  -0.24
+42: stronger   primary                    SameTrait_LatentYPYM continuous   mu_pp11    0.409 0.400   0.84
+43: stronger   primary                    SameTrait_LatentYPYM continuous    mu_p11    0.630 0.600   1.51
+44: stronger   primary                  SameTrait_ObservedYPYM continuous   mu_pp11    0.401 0.400   0.04
+45: stronger   primary                  SameTrait_ObservedYPYM continuous    mu_p11    0.598 0.600  -0.15
+46: stronger    social                    DiffTrait_LatentYPYM continuous   mu_pp11    2.299 0.891   3.54
+47: stronger    social DiffTrait_ObservedYPYM_EstimatedAParent continuous   mu_pp11    3.082 0.891   1.65
+48: stronger    social DiffTrait_ObservedYPYM_EstimatedAParent continuous    mu_p11    1.593 1.337   0.68
+49: stronger    social     DiffTrait_ObservedYPYM_FixedAParent continuous   mu_pp11    3.201 0.891   4.36
+50: stronger    social     DiffTrait_ObservedYPYM_FixedAParent continuous    mu_p11    1.696 1.337   4.04
+51: stronger    social                    SameTrait_LatentYPYM continuous   mu_pp11    2.308 0.891   1.56
+52: stronger    social                    SameTrait_LatentYPYM continuous    mu_p11    1.342 1.337   0.01
+53: stronger    social                  SameTrait_ObservedYPYM continuous   mu_pp11    1.343 0.891     NA
+54: stronger    social                  SameTrait_ObservedYPYM continuous    mu_p11    1.360 1.337     NA
+55:   weaker   genetic                    DiffTrait_LatentYPYM     binary   mu_pp11    0.926 0.905   0.99
+56:   weaker   genetic                    DiffTrait_LatentYPYM continuous   mu_pp11    0.906 0.905   0.04
+57:   weaker   genetic DiffTrait_ObservedYPYM_EstimatedAParent continuous   mu_pp11    0.875 0.905  -1.44
+58:   weaker   genetic DiffTrait_ObservedYPYM_EstimatedAParent continuous    mu_p11    0.406 0.452  -1.94
+59:   weaker   genetic     DiffTrait_ObservedYPYM_FixedAParent continuous   mu_pp11    0.884 0.905  -0.71
+60:   weaker   genetic     DiffTrait_ObservedYPYM_FixedAParent continuous    mu_p11    0.418 0.452  -1.18
+61:   weaker   genetic                    SameTrait_LatentYPYM     binary   mu_pp11    0.905 0.905   0.02
+62:   weaker   genetic                    SameTrait_LatentYPYM     binary    mu_p11    0.428 0.452  -0.98
+63:   weaker   genetic                    SameTrait_LatentYPYM continuous   mu_pp11    0.907 0.905   0.14
+64:   weaker   genetic                    SameTrait_LatentYPYM continuous    mu_p11    0.429 0.452  -1.04
+65:   weaker   genetic                  SameTrait_ObservedYPYM     binary   mu_pp11    0.862 0.905  -1.06
+66:   weaker   genetic                  SameTrait_ObservedYPYM     binary    mu_p11    0.401 0.452  -1.70
+67:   weaker   genetic                  SameTrait_ObservedYPYM continuous   mu_pp11    0.885 0.905  -1.32
+68:   weaker   genetic                  SameTrait_ObservedYPYM continuous    mu_p11    0.433 0.452  -0.69
+69:   weaker   primary                    DiffTrait_LatentYPYM     binary   mu_pp11    0.453 0.400   2.38
+70:   weaker   primary                    DiffTrait_LatentYPYM continuous   mu_pp11    0.449 0.400   3.43
+71:   weaker   primary DiffTrait_ObservedYPYM_EstimatedAParent continuous   mu_pp11    0.467 0.400   1.09
+72:   weaker   primary DiffTrait_ObservedYPYM_EstimatedAParent continuous    mu_p11    0.222 0.200   1.13
+73:   weaker   primary     DiffTrait_ObservedYPYM_FixedAParent continuous   mu_pp11    0.463 0.400   1.14
+74:   weaker   primary     DiffTrait_ObservedYPYM_FixedAParent continuous    mu_p11    0.221 0.200   1.15
+75:   weaker   primary                    SameTrait_LatentYPYM     binary   mu_pp11    0.413 0.400   1.10
+76:   weaker   primary                    SameTrait_LatentYPYM     binary    mu_p11    0.181 0.200  -1.27
+77:   weaker   primary                    SameTrait_LatentYPYM continuous   mu_pp11    0.404 0.400   0.38
+78:   weaker   primary                    SameTrait_LatentYPYM continuous    mu_p11    0.177 0.200  -1.50
+79:   weaker   primary                  SameTrait_ObservedYPYM     binary   mu_pp11    0.504 0.400   1.85
+80:   weaker   primary                  SameTrait_ObservedYPYM     binary    mu_p11    0.222 0.200   1.16
+81:   weaker   primary                  SameTrait_ObservedYPYM continuous   mu_pp11    0.394 0.400     NA
+82:   weaker   primary                  SameTrait_ObservedYPYM continuous    mu_p11    0.200 0.200  -0.02
+83:   weaker    social                    DiffTrait_LatentYPYM continuous   mu_pp11    1.700 0.891     NA
+84:   weaker    social DiffTrait_ObservedYPYM_EstimatedAParent continuous   mu_pp11    1.508 0.891   0.62
+85:   weaker    social DiffTrait_ObservedYPYM_EstimatedAParent continuous    mu_p11    0.433 0.446  -0.15
+86:   weaker    social     DiffTrait_ObservedYPYM_FixedAParent continuous   mu_pp11    1.497 0.891     NA
+87:   weaker    social     DiffTrait_ObservedYPYM_FixedAParent continuous    mu_p11    0.463 0.446     NA
+88:   weaker    social                    SameTrait_LatentYPYM continuous   mu_pp11    1.461 0.891     NA
+89:   weaker    social                    SameTrait_LatentYPYM continuous    mu_p11    0.060 0.446     NA
+90:   weaker    social                  SameTrait_ObservedYPYM continuous   mu_pp11    1.128 0.891     NA
+91:   weaker    social                  SameTrait_ObservedYPYM continuous    mu_p11    0.456 0.446     NA
+      branch mechanism                                  design      trait parameter estimate  true      z
+
+D. AMChange scripts on the Eq / DisEq exact-covariance data (mu_pp must be mu_p for Eq and 0 for DisEq)
+    regime mechanism                                  design   status   d_m2LL      mu_pp mu_pp_true max_abs_err      worst
+    <char>    <char>                                  <char>   <char>    <num>      <num>      <num>       <num>     <char>
+ 1:  DisEq   genetic                    DiffTrait_LatentYPYM       OK -3.0e-05 -0.0001763     0.0000     1.8e-04    mu_pp11
+ 2:  DisEq   genetic DiffTrait_ObservedYPYM_EstimatedAParent       OK -3.4e-05 -0.0002058     0.0000     2.1e-04    mu_pp11
+ 3:  DisEq   genetic     DiffTrait_ObservedYPYM_FixedAParent OK/green -3.6e-05 -0.0001993     0.0000     2.0e-04    mu_pp11
+ 4:  DisEq   genetic                    SameTrait_LatentYPYM       OK -3.0e-05 -0.0001891     0.0000     1.9e-04    mu_pp11
+ 5:  DisEq   genetic                  SameTrait_ObservedYPYM       OK -2.8e-05 -0.0001444     0.0000     1.4e-04    mu_pp11
+ 6:  DisEq   primary                    DiffTrait_LatentYPYM       OK -3.3e-05 -0.0001434     0.0000     1.4e-04    mu_pp11
+ 7:  DisEq   primary DiffTrait_ObservedYPYM_EstimatedAParent       OK -3.3e-05 -0.0001319     0.0000     1.3e-04    mu_pp11
+ 8:  DisEq   primary     DiffTrait_ObservedYPYM_FixedAParent       OK  3.0e-05 -0.0001944     0.0000     1.9e-04    mu_pp11
+ 9:  DisEq   primary                    SameTrait_LatentYPYM       OK -3.1e-05 -0.0001491     0.0000     1.5e-04    mu_pp11
+10:  DisEq   primary                  SameTrait_ObservedYPYM       OK -1.5e-05 -0.0000743     0.0000     7.4e-05    mu_pp11
+11:  DisEq    social                    DiffTrait_LatentYPYM       OK  2.8e-04 -0.0040610     0.0000     9.2e-02     VE_p11
+12:  DisEq    social DiffTrait_ObservedYPYM_EstimatedAParent OK/green -1.9e-05 -0.0055590     0.0000     5.6e-03    mu_pp11
+13:  DisEq    social     DiffTrait_ObservedYPYM_FixedAParent       OK -2.6e-05 -0.0038180     0.0000     3.8e-03    mu_pp11
+14:  DisEq    social                    SameTrait_LatentYPYM OK/green -3.2e-05 -0.0064400     0.0000     6.4e-03    mu_pp11
+15:  DisEq    social                  SameTrait_ObservedYPYM       OK -2.0e-06 -0.0006644     0.0000     6.6e-04    mu_pp11
+16:     Eq   genetic                    DiffTrait_LatentYPYM       OK  2.2e-04  0.9050000     0.9049     3.0e-04     VE_o11
+17:     Eq   genetic DiffTrait_ObservedYPYM_EstimatedAParent       OK -1.0e-05  0.9049000     0.9049     9.2e-05     mu_p11
+18:     Eq   genetic     DiffTrait_ObservedYPYM_FixedAParent       OK -2.2e-05  0.9049000     0.9049     1.3e-04 AMEnvMulti
+19:     Eq   genetic                    SameTrait_LatentYPYM       OK  2.3e-05  0.9049000     0.9049     1.3e-04     mu_p11
+20:     Eq   genetic                  SameTrait_ObservedYPYM       OK  2.1e-05  0.9048000     0.9049     1.4e-04 AMEnvMulti
+21:     Eq   primary                    DiffTrait_LatentYPYM       OK -1.6e-05  0.3999000     0.4000     8.7e-05    mu_pp11
+22:     Eq   primary DiffTrait_ObservedYPYM_EstimatedAParent       OK -2.1e-05  0.4000000     0.4000     4.7e-05    mu_pp11
+23:     Eq   primary     DiffTrait_ObservedYPYM_FixedAParent       OK -1.2e-05  0.4000000     0.4000     1.3e-04 AMGenMulti
+24:     Eq   primary                    SameTrait_LatentYPYM       OK -1.7e-05  0.3999000     0.4000     5.9e-05     VY_p11
+25:     Eq   primary                  SameTrait_ObservedYPYM       OK  4.5e-06  0.4000000     0.4000     7.4e-05 AMGenMulti
+26:     Eq    social                    DiffTrait_LatentYPYM       OK -1.6e-05  0.8859000     0.8911     5.3e-03    mu_pp11
+27:     Eq    social DiffTrait_ObservedYPYM_EstimatedAParent       OK -3.5e-05  0.8856000     0.8911     5.6e-03    mu_pp11
+28:     Eq    social     DiffTrait_ObservedYPYM_FixedAParent       OK -2.5e-05  0.8878000     0.8911     3.4e-03    mu_pp11
+29:     Eq    social                    SameTrait_LatentYPYM OK/green -1.6e-05  0.8863000     0.8911     4.8e-03    mu_pp11
+30:     Eq    social                  SameTrait_ObservedYPYM       OK  2.9e-05  0.8908000     0.8911     4.0e-04    mu_pp11
+    regime mechanism                                  design   status   d_m2LL      mu_pp mu_pp_true max_abs_err      worst

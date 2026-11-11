@@ -140,10 +140,16 @@ testF <- function(model, data_path, mult, truth, extraTries = 5){
     if (!is.null(se) && m2LL(se) <= m2LL(free) + 1e-6) free <- se
     cmp <- mxCompare(free, f0)
     s <- summary(free)
-    data.frame(model = model,
+    res <- data.frame(model = model,
                f_est = s$parameters$Estimate[s$parameters$name == "f11"],
                f_SE  = s$parameters$Std.Error[s$parameters$name == "f11"],
                m2LL_free = m2LL(free), m2LL_f0 = m2LL(f0),
                LRT = cmp$diffLL[2], p = cmp$p[2],
                status_free = free$output$status$code, status_f0 = f0$output$status$code, reseeded = reseeded)
+    # every estimate and the degrees of freedom of the free fit, for callers that need more than f
+    # (rbindlist drops the attributes)
+    attr(res, "params") <- data.frame(parameter = s$parameters$name, estimate = s$parameters$Estimate,
+                                      SE = s$parameters$Std.Error)
+    attr(res, "df") <- s$degreesOfFreedom
+    res
 }
