@@ -1,0 +1,52 @@
+# Conda environment for SEMPGS_ProofConcept (Python + R in one env).
+#
+# Create:   ./setup_env.sh          (micromamba create -f environment.yml, then builds rpf + NPSOL OpenMx)
+# Activate: micromamba activate sempgs
+# Verify:   python check_env.py
+#
+# Python covers the GeneEvolve-Python submodule, the *_simulate.py scripts and the results notebooks.
+# R covers OpenMxScripts/, OpenMxScripts_Cascade/ and the SensitivityAnalyses/*.R fitting scripts.
+# OpenMx: the model scripts use mxOption(NULL, "Default optimizer", "NPSOL"), which the CRAN / conda-forge
+# OpenMx builds do not include (and conda-forge has no osx-arm64 r-openmx at all). setup_env.sh therefore
+# compiles the NPSOL-enabled OpenMx source from the OpenMx team's site (getOpenMx.R) inside this env, with
+# OpenMP so mxOption(NULL, "Number of Threads", ...) parallelises. The compilers and build dependencies are
+# listed below. Use setup_env.sh rather than creating the env from this file alone.
+name: sempgs
+channels:
+  - conda-forge
+  - nodefaults
+dependencies:
+  # --- Python ---
+  - python=3.12
+  - numpy
+  - pandas>=2.2,<3  # code written against pandas 2 (pandas 3 changes copy-on-write and string defaults)
+  - scipy
+  - joblib          # GeneEvolve-Python n_jobs parallelism
+  - matplotlib
+  - pytest          # GeneEvolve-Python/tests
+  # notebooks (03_results.ipynb, 0*_results*.ipynb, 07_overlap_check.ipynb)
+  - jupyterlab
+  - ipykernel
+  - nbconvert
+  # --- R ---
+  - r-base=4.5
+  # OpenMx runtime + LinkingTo deps, plus what getOpenMx.R asks for (OpenMx itself is built by setup_env.sh)
+  - r-digest
+  - r-matrix
+  - r-lifecycle
+  - r-rcpp
+  - r-rcppeigen
+  - r-rcppparallel
+  - r-stanheaders
+  - r-bh
+  - r-mvtnorm      # rpf dependency (rpf is not on conda-forge; setup_env.sh builds it from CRAN)
+  - r-numderiv
+  - r-snowfall
+  - r-roxygen2
+  - compilers       # clang/clang++/gfortran matching the conda R toolchain
+  - llvm-openmp
+  - make
+  - r-data.table
+  - r-stringr
+  - r-mass
+  - r-polycor
